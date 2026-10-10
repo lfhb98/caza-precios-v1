@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "CazaPrecios",
+    "slug": "comparador-precios",
+    "scheme": "cazaprecios",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "CFBundleDevelopmentRegion": "es",
+        "NSCameraUsageDescription": "Esta aplicación necesita acceso a la cámara para tomar fotos de las etiquetas de precios.",
+        "NSPhotoLibraryUsageDescription": "Esta aplicación necesita acceso a la galería para adjuntar fotos de productos.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "y"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c3d7b785-8e80-4186-a61e-8148224ede95"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c3d7b785-8e80-4186-a61e-8148224ede95"
+    },
+    "android": {}
+  }
+}
