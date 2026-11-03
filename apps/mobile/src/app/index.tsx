@@ -17,26 +17,12 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DEFAULT_STORES, type CheapestInfo } from '@caza-precios/shared';
 import { THEME } from '../constants/theme';
 
 const STORAGE_KEY = '@products_list_v1';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
-
-const DEFAULT_STORES = [
-  'Mercadona',
-  'Carrefour',
-  'Consum',
-  'Lidl',
-  'Dia',
-  'Alcampo',
-  'Eroski',
-];
-
-interface CheapestInfo {
-  store: string;
-  price: number;
-}
 
 const sortAlphabetically = (list: string[]) => {
   return [...list].sort((a, b) =>

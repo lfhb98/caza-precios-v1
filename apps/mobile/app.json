@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/images/icon.png",
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -28,6 +28,10 @@
     "updates": {
       "url": "https://u.expo.dev/c3d7b785-8e80-4186-a61e-8148224ede95"
     },
-    "android": {}
+    "android": {},
+    "plugins": [
+      "expo-router",
+      "expo-splash-screen"
+    ]
   }
 }
