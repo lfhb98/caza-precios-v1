@@ -1,0 +1,22 @@
+{
+  "name": "@caza-precios/api",
+  "main": "src/index.ts",
+  "version": "1.0.0",
+  "description": "API for the Caza Precios application",
+  "dependencies": {
+    "@caza-precios/shared": "workspace:*",
+    "@hono/node-server": "^2.1.6",
+    "hono": "^4.13.16"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts   ",
+    "typecheck": "tsc --noEmit"
+  },
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3"
+  }
+}
