@@ -2,13 +2,16 @@
   "name": "caza-precios",
   "private": true,
   "version": "0.0.0",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
-    "mobile": "npm run start --workspace @caza-precios/mobile",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "api": "pnpm --filter @caza-precios/api run dev",
+    "mobile": "pnpm --filter @caza-precios/mobile run start",
+    "mobile:android": "pnpm --filter @caza-precios/mobile run android",
+    "mobile:ios": "pnpm --filter @caza-precios/mobile run ios",
+    "mobile:web": "pnpm --filter @caza-precios/mobile run web",
+    "mobile:doctor": "pnpm --filter @caza-precios/mobile run doctor",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "lint": "pnpm -r --if-present run lint",
+    "check": "pnpm typecheck && pnpm mobile:doctor"
   }
 }
