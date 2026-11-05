@@ -14,29 +14,28 @@ import {
   SafeAreaView,
   Animated,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DEFAULT_STORES, type CheapestInfo } from '@caza-precios/shared';
+import { DEFAULT_STORES } from '@caza-precios/shared';
 import { THEME } from '../constants/theme';
+import { createOrGetProduct, errorMessage, fetchProducts, type ProductSummary } from '../lib/api';
+import { formatPrice } from '../lib/format';
+import { loadMyList, saveMyList } from '../lib/my-list';
 
-const STORAGE_KEY = '@products_list_v1';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
 
-const sortAlphabetically = (list: string[]) => {
-  return [...list].sort((a, b) =>
-    a.localeCompare(b, 'es', { sensitivity: 'base' })
-  );
-};
+const byName = (a: string, b: string) => a.localeCompare(b, 'es', { sensitivity: 'base' });
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [categories, setCategories] = useState<string[]>([]);
-  const [cheapestInfoMap, setCheapestInfoMap] = useState<
-    Record<string, CheapestInfo | null>
-  >({});
-  const [newCategory, setNewCategory] = useState('');
+  const [products, setProducts] = useState<ProductSummary[]>([]);
+  const [newProductName, setNewProductName] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isStoresExpanded, setIsStoresExpanded] = useState(true);
@@ -45,11 +44,29 @@ export default function HomeScreen() {
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  const loadData = useCallback(async () => {
+    try {
+      const items = await fetchProducts(await loadMyList());
+      setProducts(items.sort((a, b) => byName(a.name, b.name)));
+      setLoadError(null);
+    } catch (e) {
+      setLoadError(errorMessage(e));
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, [loadData])
   );
+
+  const refresh = () => {
+    setIsRefreshing(true);
+    loadData();
+  };
 
   const openMenu = () => {
     setIsMenuOpen(true);
@@ -85,146 +102,76 @@ export default function HomeScreen() {
     });
   };
 
-  const loadData = async () => {
-    try {
-      const storedData = await AsyncStorage.getItem(STORAGE_KEY);
-      let currentCategories: string[] = [];
-
-      if (storedData !== null) {
-        currentCategories = JSON.parse(storedData);
-      } else {
-        currentCategories = sortAlphabetically(['Arroz', 'Huevos', 'Leche', 'Pan']);
-        await AsyncStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify(currentCategories)
-        );
-      }
-
-      setCategories(currentCategories);
-      await loadCheapestPrices(currentCategories);
-    } catch (e) {
-      console.error('Error al cargar datos:', e);
-    }
-  };
-
-  const loadCheapestPrices = async (products: string[]) => {
-    const map: Record<string, CheapestInfo | null> = {};
-
-    for (const prod of products) {
-      try {
-        const priceData = await AsyncStorage.getItem(
-          `@prices_${prod.toLowerCase()}`
-        );
-        if (priceData) {
-          const entries = JSON.parse(priceData);
-          if (entries.length > 0) {
-            const minEntry = entries.reduce(
-              (min: any, item: any) => (item.price < min.price ? item : min),
-              entries[0]
-            );
-            map[prod] = { store: minEntry.store, price: minEntry.price };
-          } else {
-            map[prod] = null;
-          }
-        } else {
-          map[prod] = null;
-        }
-      } catch (e) {
-        map[prod] = null;
-      }
-    }
-
-    setCheapestInfoMap(map);
-  };
-
-  const saveCategories = async (newList: string[]) => {
-    try {
-      setCategories(newList);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
-      await loadCheapestPrices(newList);
-    } catch (e) {
-      console.error('Error al guardar productos:', e);
-    }
-  };
-
-  const addCategory = () => {
+  // Añade a "mi lista" un producto del catálogo; si no existe, lo crea.
+  const addProduct = async () => {
     Keyboard.dismiss();
-    const cleanName = newCategory.trim();
+    const cleanName = newProductName.trim();
 
     if (!cleanName) {
       Alert.alert('Atención', 'Ingresa un nombre para el producto.');
       return;
     }
 
-    if (
-      categories.some(
-        (item) => item.toLowerCase() === cleanName.toLowerCase()
-      )
-    ) {
-      Alert.alert('Atención', 'Este producto ya existe en tu lista.');
-      return;
-    }
+    setIsCreating(true);
+    try {
+      const product = await createOrGetProduct(cleanName);
+      const myList = await loadMyList();
 
-    const updatedCategories = sortAlphabetically([...categories, cleanName]);
-    saveCategories(updatedCategories);
-    setNewCategory('');
+      if (myList.includes(product.id)) {
+        Alert.alert('Atención', `"${product.name}" ya está en tu lista.`);
+        return;
+      }
+
+      await saveMyList([...myList, product.id]);
+      setNewProductName('');
+      await loadData();
+    } catch (e) {
+      Alert.alert('Error', errorMessage(e));
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  const confirmDeleteCategory = (categoryName: string) => {
+  const confirmRemoveProduct = (product: ProductSummary) => {
     Alert.alert(
-      'Eliminar producto',
-      `¿Deseas eliminar "${categoryName}" de la lista y sus precios guardados?`,
+      'Quitar de mi lista',
+      `¿Deseas quitar "${product.name}" de tu lista? Sus precios seguirán disponibles para la comunidad.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: 'Quitar',
           style: 'destructive',
           onPress: async () => {
-            const updated = categories.filter((item) => item !== categoryName);
-            await saveCategories(updated);
-            await AsyncStorage.removeItem(
-              `@prices_${categoryName.toLowerCase()}`
-            );
+            const myList = await loadMyList();
+            await saveMyList(myList.filter((id) => id !== product.id));
+            setProducts((current) => current.filter((item) => item.id !== product.id));
           },
         },
       ]
     );
   };
 
-  const openCompareScreen = (productName: string) => {
+  const openCompareScreen = (product: ProductSummary) => {
     router.push({
       pathname: '/compare',
-      params: { productName },
+      params: { productId: product.id, productName: product.name },
     });
   };
 
   const getActiveStoresList = () => {
-    const customStoresFromCheapest = Object.values(cheapestInfoMap)
-      .filter((info): info is CheapestInfo => info !== null)
-      .map((info) => info.store);
-
-    const allUniqueStores = Array.from(
-      new Set([...DEFAULT_STORES, ...customStoresFromCheapest])
+    const storesFromCheapest = products.flatMap((product) =>
+      product.cheapest ? [product.cheapest.storeName] : []
     );
-
-    return allUniqueStores.sort((a, b) =>
-      a.localeCompare(b, 'es', { sensitivity: 'base' })
-    );
+    return Array.from(new Set([...DEFAULT_STORES, ...storesFromCheapest])).sort(byName);
   };
 
   const getCheapestCountForStore = (storeName: string) => {
-    return Object.values(cheapestInfoMap).filter(
-      (info) => info !== null && info.store.toLowerCase() === storeName.toLowerCase()
-    ).length;
+    return products.filter((product) => product.cheapest?.storeName === storeName).length;
   };
 
-  const displayedCategories = selectedStoreFilter
-    ? categories.filter(
-        (prod) =>
-          cheapestInfoMap[prod]?.store.toLowerCase() ===
-          selectedStoreFilter.toLowerCase()
-      )
-    : categories;
+  const displayedProducts = selectedStoreFilter
+    ? products.filter((product) => product.cheapest?.storeName === selectedStoreFilter)
+    : products;
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -249,19 +196,38 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* Error de conexión */}
+        {loadError && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{loadError}</Text>
+            <TouchableOpacity onPress={refresh}>
+              <Text style={styles.retryText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Formulario */}
         <View style={styles.formContainer}>
           <TextInput
             style={styles.input}
             placeholder="Nuevo producto (ej. Aceite)"
             placeholderTextColor={THEME.subtext}
-            value={newCategory}
-            onChangeText={setNewCategory}
+            value={newProductName}
+            onChangeText={setNewProductName}
             returnKeyType="done"
-            onSubmitEditing={addCategory}
+            onSubmitEditing={addProduct}
+            editable={!isCreating}
           />
-          <TouchableOpacity style={styles.addButton} onPress={addCategory}>
-            <Text style={styles.addButtonText}>+ Crear</Text>
+          <TouchableOpacity
+            style={[styles.addButton, isCreating && styles.buttonDisabled]}
+            onPress={addProduct}
+            disabled={isCreating}
+          >
+            {isCreating ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.addButtonText}>+ Añadir</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -272,16 +238,18 @@ export default function HomeScreen() {
         </Text>
 
         {/* Lista en Cuadrícula */}
-        <FlatList
-          data={displayedCategories}
-          keyExtractor={(item) => item}
-          numColumns={2}
-          columnWrapperStyle={displayedCategories.length > 1 ? styles.rowWrapper : undefined}
-          keyboardShouldPersistTaps="handled"
-          renderItem={({ item }) => {
-            const cheapest = cheapestInfoMap[item];
-
-            return (
+        {isLoading ? (
+          <ActivityIndicator style={styles.loader} size="large" color={THEME.primary} />
+        ) : (
+          <FlatList
+            data={displayedProducts}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            columnWrapperStyle={displayedProducts.length > 1 ? styles.rowWrapper : undefined}
+            keyboardShouldPersistTaps="handled"
+            refreshing={isRefreshing}
+            onRefresh={refresh}
+            renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.gridCard}
                 onPress={() => openCompareScreen(item)}
@@ -291,7 +259,7 @@ export default function HomeScreen() {
                   <Text style={styles.categoryIcon}>📦</Text>
                   <TouchableOpacity
                     style={styles.deleteButton}
-                    onPress={() => confirmDeleteCategory(item)}
+                    onPress={() => confirmRemoveProduct(item)}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
                     <Text style={styles.deleteButtonText}>🗑️</Text>
@@ -299,35 +267,33 @@ export default function HomeScreen() {
                 </View>
 
                 <Text style={styles.categoryTitle} numberOfLines={1}>
-                  {item}
+                  {item.name}
                 </Text>
 
                 <View style={styles.cheapestFooter}>
-                  {cheapest ? (
+                  {item.cheapest ? (
                     <>
                       <Text style={styles.cheapestLabel}>Más barato en:</Text>
                       <Text style={styles.cheapestStore} numberOfLines={1}>
-                        📍 {cheapest.store}
+                        📍 {item.cheapest.storeName}
                       </Text>
-                      <Text style={styles.cheapestPrice}>
-                        {cheapest.price.toFixed(2)} €
-                      </Text>
+                      <Text style={styles.cheapestPrice}>{formatPrice(item.cheapest.price)}</Text>
                     </>
                   ) : (
                     <Text style={styles.noPricesText}>Sin precios</Text>
                   )}
                 </View>
               </TouchableOpacity>
-            );
-          }}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>
-              {selectedStoreFilter
-                ? `No hay productos registrados donde ${selectedStoreFilter} sea el más barato.`
-                : 'No tienes productos en tu lista.'}
-            </Text>
-          }
-        />
+            )}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>
+                {selectedStoreFilter
+                  ? `No hay productos registrados donde ${selectedStoreFilter} sea el más barato.`
+                  : 'Tu lista está vacía. Añade un producto para ver dónde está más barato.'}
+              </Text>
+            }
+          />
+        )}
 
         {/* Modal / Menú Lateral */}
         <Modal
@@ -694,5 +660,33 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 11,
     fontWeight: 'bold',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fdecea',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: THEME.danger,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    color: THEME.text,
+    marginRight: 10,
+  },
+  retryText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: THEME.danger,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  loader: {
+    marginTop: 30,
   },
 });

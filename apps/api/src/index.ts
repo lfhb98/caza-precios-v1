@@ -1,18 +1,24 @@
-import { serve } from "@hono/node-server";
-import { Hono } from "hono";
+import { existsSync } from 'node:fs';
+// Vercel solo acepta como entrada un archivo que importe `hono` directamente.
+import { Hono } from 'hono';
+import { createSupabaseVerifier } from './auth.js';
+import { createApp } from './create-app.js';
+import { createDatabase } from './db/client.js';
+import { loadEnv } from './env.js';
 
-const app = new Hono();
-const PORT = Number(process.env.PORT) || 3000;
+// Punto de entrada de la API. Vercel lo detecta y sirve su `export default`;
+// en local lo arranca src/serve.ts.
 
-app.get("/health", (c) => {
-  return c.json({
-    ok: true,
-    message: "API is running",
-  });
+if (existsSync('.env')) process.loadEnvFile('.env');
+const env = loadEnv();
+
+const { db } = createDatabase(env.DATABASE_URL);
+
+const app = createApp({
+  db,
+  verifyToken: createSupabaseVerifier(env.SUPABASE_URL),
+  corsOrigins: env.CORS_ORIGINS,
+  log: true,
 });
 
-serve({
-  fetch: app.fetch,
-  port: PORT,
-});
-console.log(`Server is running on http://localhost:${PORT}`);
+export default app satisfies Hono<any, any, any>;

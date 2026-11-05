@@ -6,127 +6,76 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  Image,
   ScrollView,
   Keyboard,
   TouchableWithoutFeedback,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AVAILABLE_STORES, type PriceEntry } from '@caza-precios/shared';
 import { THEME } from '../constants/theme';
+import {
+  createOrGetStore,
+  createPrice,
+  currentUserId,
+  deletePrice,
+  errorMessage,
+  fetchProduct,
+  fetchStores,
+  type StorePrice,
+  type Store,
+} from '../lib/api';
+import { cleanPriceInput, formatDate, formatPrice } from '../lib/format';
+
+const OTHER_STORE = 'other';
 
 export default function CompareScreen() {
   const router = useRouter();
-  const { productName } = useLocalSearchParams<{ productName: string }>();
+  const { productId, productName } = useLocalSearchParams<{
+    productId: string;
+    productName: string;
+  }>();
 
-  const storageKey = `@prices_${(productName || 'unknown').toLowerCase()}`;
-
-  const [entries, setEntries] = useState<PriceEntry[]>([]);
-  const [store, setStore] = useState(AVAILABLE_STORES[0]);
+  const [prices, setPrices] = useState<StorePrice[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [storeId, setStoreId] = useState<string | null>(null);
   const [customStore, setCustomStore] = useState('');
   const [price, setPrice] = useState('');
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadPrices = useCallback(async () => {
+    try {
+      const [product, storeList, uid] = await Promise.all([
+        fetchProduct(productId),
+        fetchStores(),
+        currentUserId(),
+      ]);
+      setPrices(product.prices);
+      setStores(storeList);
+      setUserId(uid);
+      setStoreId((current) => current ?? storeList[0]?.id ?? OTHER_STORE);
+      setLoadError(null);
+    } catch (e) {
+      setLoadError(errorMessage(e));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [productId]);
 
   useFocusEffect(
     useCallback(() => {
       loadPrices();
-    }, [productName])
+    }, [loadPrices])
   );
 
-  const loadPrices = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(storageKey);
-      if (stored !== null) {
-        setEntries(JSON.parse(stored));
-      } else {
-        setEntries([]);
-      }
-    } catch (e) {
-      console.error('Error al cargar precios:', e);
-    }
-  };
-
-  const savePrices = async (newList: PriceEntry[]) => {
-    try {
-      setEntries(newList);
-      await AsyncStorage.setItem(storageKey, JSON.stringify(newList));
-    } catch (e) {
-      console.error('Error al guardar precios:', e);
-    }
-  };
-
-  const handlePriceChange = (text: string) => {
-    let cleaned = text.replace(',', '.').replace(/[^0-9.]/g, '');
-    const parts = cleaned.split('.');
-    if (parts.length > 2) {
-      cleaned = parts[0] + '.' + parts.slice(1).join('');
-    }
-    setPrice(cleaned);
-  };
-
-  const takePhoto = async () => {
-    const { granted } = await ImagePicker.requestCameraPermissionsAsync();
-    if (!granted) {
-      Alert.alert('Permiso requerido', 'Se requiere acceso a la cámara.');
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
-    }
-  };
-
-  const pickFromGallery = async () => {
-    const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!granted) {
-      Alert.alert('Permiso requerido', 'Se requiere acceso a la galería.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
-    }
-  };
-
-  const selectImageSource = () => {
-    Alert.alert(
-      'Agregar foto del precio / producto',
-      'Selecciona una opción:',
-      [
-        { text: '📷 Tomar foto con la cámara', onPress: takePhoto },
-        { text: '🖼️ Elegir de la galería', onPress: pickFromGallery },
-        { text: 'Cancelar', style: 'cancel' },
-      ]
-    );
-  };
-
-  const addPriceEntry = () => {
+  const addPriceEntry = async () => {
     Keyboard.dismiss();
 
     if (!price) {
       Alert.alert('Atención', 'Por favor ingresa un precio.');
-      return;
-    }
-
-    const finalStore = store === 'Otro' ? customStore.trim() : store;
-    if (store === 'Otro' && !finalStore) {
-      Alert.alert('Atención', 'Por favor escribe el nombre del local.');
       return;
     }
 
@@ -136,43 +85,54 @@ export default function CompareScreen() {
       return;
     }
 
-    const newEntry: PriceEntry = {
-      id: Date.now().toString(),
-      store: finalStore,
-      price: numericPrice,
-      imageUri,
-    };
+    if (storeId === OTHER_STORE && !customStore.trim()) {
+      Alert.alert('Atención', 'Por favor escribe el nombre del local.');
+      return;
+    }
 
-    const updatedList = [...entries, newEntry].sort((a, b) => a.price - b.price);
+    setIsSaving(true);
+    try {
+      const finalStoreId =
+        storeId === OTHER_STORE ? (await createOrGetStore(customStore.trim())).id : storeId!;
+      await createPrice({ productId, storeId: finalStoreId, price: numericPrice });
 
-    savePrices(updatedList);
-    setPrice('');
-    setCustomStore('');
-    setImageUri(null);
+      setPrice('');
+      setCustomStore('');
+      if (storeId === OTHER_STORE) setStoreId(finalStoreId);
+      await loadPrices();
+    } catch (e) {
+      Alert.alert('Error', errorMessage(e));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const confirmDeleteEntry = (id: string, storeName: string) => {
+  const confirmDeleteEntry = (entry: StorePrice) => {
     Alert.alert(
       'Eliminar precio',
-      `¿Deseas quitar el registro de ${storeName}?`,
+      `¿Deseas quitar tu registro de ${entry.storeName}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: () => {
-            const updated = entries.filter((item) => item.id !== id);
-            savePrices(updated);
+          onPress: async () => {
+            try {
+              await deletePrice(entry.id);
+              await loadPrices();
+            } catch (e) {
+              Alert.alert('Error', errorMessage(e));
+            }
           },
         },
       ]
     );
   };
 
-  const openDetailScreen = (entryId: string) => {
+  const openDetailScreen = (priceId: string) => {
     router.push({
       pathname: '/detail',
-      params: { productName, entryId },
+      params: { productId, productName, priceId },
     });
   };
 
@@ -192,6 +152,15 @@ export default function CompareScreen() {
           <Text style={styles.productBannerTitle}>{productName || 'Producto'}</Text>
         </View>
 
+        {loadError && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{loadError}</Text>
+            <TouchableOpacity onPress={loadPrices}>
+              <Text style={styles.retryText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.form}>
           <Text style={styles.label}>1. Selecciona el local:</Text>
           <ScrollView
@@ -200,25 +169,25 @@ export default function CompareScreen() {
             style={styles.storesContainer}
             keyboardShouldPersistTaps="handled"
           >
-            {AVAILABLE_STORES.map((item) => (
+            {[...stores, { id: OTHER_STORE, name: 'Otro' }].map((item) => (
               <TouchableOpacity
-                key={item}
-                style={[styles.storeChip, store === item && styles.storeChipSelected]}
-                onPress={() => setStore(item)}
+                key={item.id}
+                style={[styles.storeChip, storeId === item.id && styles.storeChipSelected]}
+                onPress={() => setStoreId(item.id)}
               >
                 <Text
                   style={[
                     styles.storeChipText,
-                    store === item && styles.storeChipTextSelected,
+                    storeId === item.id && styles.storeChipTextSelected,
                   ]}
                 >
-                  {item}
+                  {item.name}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          {store === 'Otro' && (
+          {storeId === OTHER_STORE && (
             <TextInput
               style={styles.input}
               placeholder="Escribe el nombre del local..."
@@ -239,67 +208,68 @@ export default function CompareScreen() {
               placeholderTextColor={THEME.subtext}
               keyboardType="decimal-pad"
               value={price}
-              onChangeText={handlePriceChange}
+              onChangeText={(text) => setPrice(cleanPriceInput(text))}
               returnKeyType="done"
               onSubmitEditing={Keyboard.dismiss}
             />
           </View>
 
-          <View style={styles.imagePickerContainer}>
-            <TouchableOpacity style={styles.secondaryButton} onPress={selectImageSource}>
-              <Text style={styles.secondaryButtonText}>
-                {imageUri ? '📷 / 🖼️ Cambiar Foto' : '📷 / 🖼️ Adjuntar Foto'}
-              </Text>
-            </TouchableOpacity>
-            {imageUri && <Image source={{ uri: imageUri }} style={styles.previewImage} />}
-          </View>
-
-          <TouchableOpacity style={styles.primaryButton} onPress={addPriceEntry}>
-            <Text style={styles.primaryButtonText}>Guardar y Comparar</Text>
+          <TouchableOpacity
+            style={[styles.primaryButton, (isSaving || !storeId) && styles.buttonDisabled]}
+            onPress={addPriceEntry}
+            disabled={isSaving || !storeId}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Guardar y Comparar</Text>
+            )}
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionTitle}>Precios registrados (Toca para ver detalle):</Text>
-        <FlatList
-          data={entries}
-          keyExtractor={(item) => item.id}
-          keyboardShouldPersistTaps="handled"
-          renderItem={({ item, index }) => (
-            <TouchableOpacity
-              style={styles.card}
-              activeOpacity={0.7}
-              onPress={() => openDetailScreen(item.id)}
-            >
-              {item.imageUri ? (
-                <Image source={{ uri: item.imageUri }} style={styles.cardImage} />
-              ) : (
-                <View style={styles.placeholderImage}>
-                  <Text style={{ color: THEME.subtext, fontSize: 10 }}>Sin Foto</Text>
-                </View>
-              )}
-
-              <View style={styles.cardContent}>
-                <View style={styles.cardHeaderRow}>
-                  <Text style={styles.productStore}>📍 {item.store}</Text>
-                  <Text style={styles.badge}>#{index + 1} Más barato</Text>
-                </View>
-                <Text style={styles.productPrice}>{item.price.toFixed(2)} €</Text>
-              </View>
-
+        <Text style={styles.sectionTitle}>Precio actual en cada local (Toca para ver detalle):</Text>
+        {isLoading ? (
+          <ActivityIndicator style={styles.loader} size="large" color={THEME.primary} />
+        ) : (
+          <FlatList
+            data={prices}
+            keyExtractor={(item) => item.id}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item, index }) => (
               <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => confirmDeleteEntry(item.id, item.store)}
+                style={styles.card}
+                activeOpacity={0.7}
+                onPress={() => openDetailScreen(item.id)}
               >
-                <Text style={styles.deleteButtonText}>🗑️</Text>
+                <View style={styles.cardContent}>
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.productStore}>📍 {item.storeName}</Text>
+                    <Text style={styles.badge}>#{index + 1} Más barato</Text>
+                  </View>
+                  <Text style={styles.productPrice}>{formatPrice(item.price)}</Text>
+                  <Text style={styles.metaText}>
+                    {formatDate(item.observedAt)}
+                    {item.userId === userId ? ' · registrado por ti' : ''}
+                  </Text>
+                </View>
+
+                {item.userId === userId && (
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => confirmDeleteEntry(item)}
+                  >
+                    <Text style={styles.deleteButtonText}>🗑️</Text>
+                  </TouchableOpacity>
+                )}
               </TouchableOpacity>
-            </TouchableOpacity>
-          )}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>
-              Aún no has registrado precios para {productName}.
-            </Text>
-          }
-        />
+            )}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>
+                Aún no hay precios para {productName}. ¡Registra el primero!
+              </Text>
+            }
+          />
+        )}
       </View>
     </TouchableWithoutFeedback>
   );
@@ -406,26 +376,6 @@ const styles = StyleSheet.create({
   priceInput: {
     flex: 1,
   },
-  imagePickerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  secondaryButton: {
-    backgroundColor: THEME.chipBg,
-    padding: 10,
-    borderRadius: 8,
-  },
-  secondaryButtonText: {
-    color: THEME.text,
-    fontWeight: '600',
-  },
-  previewImage: {
-    width: 45,
-    height: 45,
-    borderRadius: 8,
-  },
   primaryButton: {
     backgroundColor: THEME.primary,
     padding: 14,
@@ -461,21 +411,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: THEME.cheapest,
   },
-  cardImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  placeholderImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-    backgroundColor: THEME.chipBg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
   cardContent: {
     flex: 1,
   },
@@ -501,5 +436,38 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: THEME.subtext,
     marginTop: 15,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fdecea',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: THEME.danger,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    color: THEME.text,
+    marginRight: 10,
+  },
+  retryText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: THEME.danger,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  loader: {
+    marginTop: 30,
+  },
+  metaText: {
+    fontSize: 12,
+    color: THEME.subtext,
+    marginTop: 2,
   },
 });

@@ -2,12 +2,30 @@
   "name": "@caza-precios/shared",
   "version": "0.0.0",
   "private": true,
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "source": "./src/index.ts",
+      "node": "./dist/index.js",
+      "default": "./src/index.ts"
+    },
+    "./schemas": {
+      "types": "./src/schemas.ts",
+      "source": "./src/schemas.ts",
+      "node": "./dist/schemas.js",
+      "default": "./src/schemas.ts"
+    }
+  },
   "scripts": {
+    "build": "esbuild src/index.ts src/schemas.ts --bundle --format=esm --platform=node --packages=external --outdir=dist",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "typescript": "~6.0.3"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
   }
 }

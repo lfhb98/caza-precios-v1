@@ -1,0 +1,8 @@
+# Lo que `vercel deploy` (desde la raíz del monorepo) no debe subir.
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+apps/mobile/dist
+apps/mobile/.expo
+.claude
