@@ -164,6 +164,20 @@ pnpm dlx eas-cli@latest build -p android --profile preview   # APK para instalar
 
 El proyecto EAS (`extra.eas.projectId` en `app.json`) pertenece a la cuenta de Expo del propietario. Para compilar necesitas que te añada a su cuenta u organización en expo.dev; no lo compiles con una cuenta propia, porque las credenciales de firma (keystore) deben quedar en la suya.
 
+## Agentes de IA (Claude Code y otros)
+
+El repositorio incluye configuración para trabajar con agentes:
+
+- **`AGENTS.md`**: reglas del proyecto para cualquier agente (hay uno en la raíz y otro en `apps/mobile`).
+- **`.mcp.json`**: servidor MCP de Supabase limitado a este proyecto. La primera vez, aprueba el servidor al abrir Claude Code y autentícate con `/mcp` → `supabase` usando una cuenta con acceso a la organización del proyecto. No contiene credenciales.
+- **Skills de Supabase** en `.agents/skills/` (versión fijada en `skills-lock.json`). Para que Claude Code las vea, crea los enlaces locales una vez:
+
+  ```bash
+  npx skills add supabase/agent-skills
+  ```
+
+  Los enlaces (`.claude/skills/`) no se suben a git: en Windows sin `core.symlinks` se convertirían en copias.
+
 ## Reglas
 
 - `pnpm install` solo desde la raíz. No crees `package-lock.json` ni lockfiles dentro de `apps/*`.
