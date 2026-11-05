@@ -1,0 +1,4 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+nodeLinker: "isolated"

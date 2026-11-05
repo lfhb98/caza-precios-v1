@@ -1,56 +1,138 @@
-# Welcome to your Expo app 👋
+# CazaPrecios
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Comparador de precios de supermercado: guardas lo que cuesta cada producto en cada tienda (con foto de la etiqueta) y la app te dice dónde está más barato.
 
-## Get started
+## Estructura
 
-1. Install dependencies
+Este repositorio es un **monorepo**: varios proyectos relacionados viven juntos y se gestionan con [pnpm workspaces](https://pnpm.io/workspaces).
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+caza-precios/
+├─ apps/
+│  └─ mobile/        App Expo / React Native (iOS y Android)    @caza-precios/mobile
+├─ packages/
+│  └─ shared/        Tipos y constantes compartidos             @caza-precios/shared
+├─ package.json      Scripts para todo el monorepo
+├─ pnpm-workspace.yaml
+└─ pnpm-lock.yaml    Único lockfile para todos los proyectos
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Previstos: `apps/api` (backend) y `apps/web` (frontend web).
 
-### Other setup steps
+## ¿Por qué un monorepo?
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Hasta ahora CazaPrecios era solo una app móvil que guardaba todo en el teléfono. Los siguientes pasos son un **backend** (sincronizar datos, cuentas de usuario, fotos en la nube) y una **versión web**. Son tres proyectos que hablan el mismo idioma: productos, precios y supermercados.
 
-## Learn more
+- **Una sola definición de los datos.** `PriceEntry`, la lista de supermercados, etc. viven en `packages/shared` y los importan todas las apps. Antes estaban copiados en tres pantallas distintas. Si cambia un campo, TypeScript marca el error en el móvil, la web y la API a la vez, antes de ejecutar nada.
+- **Cambios atómicos.** Añadir un campo nuevo (por ejemplo, la fecha del precio) toca API, móvil y web. En un monorepo es un solo commit y un solo Pull Request, sin coordinar versiones entre repositorios.
+- **Una instalación, un lockfile, unos comandos.** `pnpm install` en la raíz prepara todo; `pnpm typecheck` revisa todos los proyectos.
+- **Sin publicar paquetes.** `@caza-precios/shared` no se sube a npm: pnpm lo enlaza localmente (`workspace:*`).
 
-To learn more about developing your project with Expo, look at the following resources:
+Costes, para ser honestos:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- Un poco más de configuración inicial (workspaces, scripts con `--filter`).
+- Expo y EAS se ejecutan desde `apps/mobile`, no desde la raíz.
+- Hay que vigilar que no haya dos versiones de `react` o `react-native` (ver [Reglas](#reglas)).
 
-## Join the community
+### ¿Por qué pnpm?
 
-Join our community of developers creating universal apps.
+- **Dependencias estrictas:** cada proyecto solo puede importar lo que declara en su `package.json`. Con npm, un paquete olvidado podía funcionar "por casualidad" en local y romper en EAS Build o en otro ordenador.
+- Más rápido y ocupa menos disco: cada versión de un paquete se guarda una sola vez en el equipo.
+- Expo lo soporta oficialmente en monorepos (sin `metro.config.js` personalizado desde SDK 52).
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Requisitos
+
+- **Node.js** (versión LTS actual).
+- **pnpm**, la versión indicada en `packageManager` de `package.json`. Desde Node 25 Corepack ya no viene incluido; instálalo con:
+
+  ```bash
+  npm install -g pnpm
+  ```
+
+- Para probar la app: **Expo Go** en el móvil, o un emulador Android / simulador iOS.
+
+## Primeros pasos
+
+```bash
+git clone <url-del-repo>
+cd caza-precios-v1
+pnpm install        # siempre desde la raíz
+pnpm mobile         # arranca Expo; escanea el QR con el móvil
+```
+
+Si pnpm avisa de scripts de compilación ignorados, revisa la lista y apruébalos con `pnpm approve-builds` solo si reconoces los paquetes.
+
+## Scripts (desde la raíz)
+
+| Comando | Qué hace |
+|---|---|
+| `pnpm mobile` | Arranca el servidor de desarrollo de Expo |
+| `pnpm mobile:android` | Igual, abriendo directamente el emulador Android |
+| `pnpm mobile:ios` | Igual, abriendo el simulador iOS (solo macOS) |
+| `pnpm mobile:web` | Igual, en el navegador |
+| `pnpm mobile:doctor` | Diagnóstico de Expo (versiones y configuración) |
+| `pnpm typecheck` | TypeScript en todos los proyectos |
+| `pnpm lint` | Lint en todos los proyectos (ESLint aún no está configurado en `mobile`: la primera vez ofrecerá instalarlo) |
+| `pnpm check` | `typecheck` + `mobile:doctor`; pásalo antes de abrir un Pull Request |
+
+Cómo funcionan por dentro:
+
+- `pnpm --filter <paquete> run <script>` ejecuta un script en un proyecto concreto.
+- `pnpm -r run <script>` lo ejecuta en todos los proyectos que lo tengan (`--if-present` salta los que no).
+
+## Trabajar con los proyectos
+
+### Añadir dependencias
+
+Cada dependencia se declara en el proyecto que la usa, nunca en la raíz:
+
+```bash
+# Librerías de Expo / React Native: usar expo install (elige la versión compatible con el SDK)
+cd apps/mobile
+pnpm exec expo install expo-camera
+
+# Cualquier otra librería, desde la raíz
+pnpm --filter @caza-precios/shared add -D typescript
+```
+
+### Usar el paquete compartido
+
+En el `package.json` del proyecto que lo necesite:
+
+```json
+"@caza-precios/shared": "workspace:*"
+```
+
+Y en el código: `import { AVAILABLE_STORES, type PriceEntry } from '@caza-precios/shared';`
+
+`packages/shared` exporta TypeScript sin compilar; Metro y `tsc` lo leen directamente.
+
+### Herramientas sueltas
+
+- `pnpm exec <cmd>`: herramienta ya instalada en el proyecto (equivale a `npx` con algo instalado).
+- `pnpm dlx <cmd>`: descarga y ejecuta sin instalar (equivale a `npx paquete@latest`).
+
+## Builds con EAS
+
+Todos los comandos de EAS se ejecutan **dentro de `apps/mobile`**, donde está `eas.json`:
+
+```bash
+cd apps/mobile
+pnpm dlx eas-cli@latest build -p android --profile preview   # APK para instalar en un móvil
+```
+
+| Perfil | Resultado |
+|---|---|
+| `development` | APK de desarrollo (necesita el servidor de Expo arrancado) |
+| `preview` | APK instalable para pruebas internas |
+| `production` | AAB para Google Play |
+
+El proyecto EAS (`extra.eas.projectId` en `app.json`) pertenece a la cuenta de Expo del propietario. Para compilar necesitas que te añada a su cuenta u organización en expo.dev; no lo compiles con una cuenta propia, porque las credenciales de firma (keystore) deben quedar en la suya.
+
+## Reglas
+
+- `pnpm install` solo desde la raíz. No crees `package-lock.json` ni lockfiles dentro de `apps/*`.
+- Las dependencias de cada app van en su `package.json`, no en la raíz.
+- `packages/shared` no depende de `react` ni `react-native`: debe haber una sola versión de cada una en todo el monorepo (compruébalo con `pnpm why react-native`).
+- Entre proyectos del monorepo, siempre `"workspace:*"`.
+- `ios/` y `android/` se generan (Continuous Native Generation) y están ignorados por git: la configuración nativa va en `app.json`.

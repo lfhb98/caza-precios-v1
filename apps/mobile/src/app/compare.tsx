@@ -15,25 +15,8 @@ import {
 import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AVAILABLE_STORES, type PriceEntry } from '@caza-precios/shared';
 import { THEME } from '../constants/theme';
-
-interface PriceEntry {
-  id: string;
-  store: string;
-  price: number;
-  imageUri: string | null;
-}
-
-const AVAILABLE_STORES = [
-  'Mercadona',
-  'Carrefour',
-  'Consum',
-  'Lidl',
-  'Dia',
-  'Alcampo',
-  'Eroski',
-  'Otro',
-];
 
 export default function CompareScreen() {
   const router = useRouter();
