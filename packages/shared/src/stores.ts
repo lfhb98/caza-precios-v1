@@ -1,3 +1,4 @@
+// Tiendas precargadas en la base de datos (migración 0001 de apps/api).
 export const DEFAULT_STORES = [
   'Mercadona',
   'Carrefour',
@@ -7,7 +8,3 @@ export const DEFAULT_STORES = [
   'Alcampo',
   'Eroski',
 ];
-
-export const OTHER_STORE = 'Otro';
-
-export const AVAILABLE_STORES = [...DEFAULT_STORES, OTHER_STORE];
