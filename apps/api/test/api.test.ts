@@ -110,6 +110,19 @@ describe('productos', () => {
     expect(percent.body.map((p: { name: string }) => p.name)).toEqual(['Aceite 100%']);
   });
 
+  it('filtra por ids (para "mi lista")', async () => {
+    const azucar = await createProduct('Azúcar');
+    const cafe = await createProduct('Café');
+    await createProduct('Harina');
+
+    const { status, body } = await ctx.request('GET', `/products?ids=${cafe.id},${azucar.id}`);
+    expect(status).toBe(200);
+    expect(body.map((p: { name: string }) => p.name)).toEqual(['Azúcar', 'Café']);
+
+    expect((await ctx.request('GET', '/products?ids=')).body).toEqual([]);
+    expect((await ctx.request('GET', '/products?ids=no-es-uuid')).status).toBe(400);
+  });
+
   it('valida id y paginación', async () => {
     expect((await ctx.request('GET', '/products/no-es-un-uuid')).status).toBe(400);
     expect((await ctx.request('GET', '/products?limit=0')).status).toBe(400);

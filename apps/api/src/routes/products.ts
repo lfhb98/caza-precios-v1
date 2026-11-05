@@ -1,6 +1,6 @@
 import { createProductSchema } from '@caza-precios/shared/schemas';
 import { zValidator } from '@hono/zod-validator';
-import { and, asc, desc, eq, ilike, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
@@ -15,6 +15,12 @@ const productColumns = { id: products.id, name: products.name };
 
 const listQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
+  // Ids separados por comas, para pedir de una vez los productos de "mi lista".
+  ids: z
+    .string()
+    .transform((value) => value.split(',').filter(Boolean))
+    .pipe(z.array(z.uuid('Algún id no es válido')).max(100))
+    .optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
@@ -45,12 +51,18 @@ async function findProduct(db: Database, id: string) {
 export function productsRoutes(db: Database, verifyToken: VerifyToken) {
   return new Hono<AppEnv>()
     .get('/', zValidator('query', listQuerySchema, validationHook), async (c) => {
-      const { search, limit, offset } = c.req.valid('query');
+      const { search, ids, limit, offset } = c.req.valid('query');
+      if (ids?.length === 0) return c.json([]);
 
       const rows = await db
         .select(productColumns)
         .from(products)
-        .where(search ? ilike(products.name, `%${escapeLike(search)}%`) : undefined)
+        .where(
+          and(
+            search ? ilike(products.name, `%${escapeLike(search)}%`) : undefined,
+            ids ? inArray(products.id, ids) : undefined
+          )
+        )
         .orderBy(asc(sql`lower(${products.name})`))
         .limit(limit)
         .offset(offset);
