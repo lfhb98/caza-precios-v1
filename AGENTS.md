@@ -3,7 +3,8 @@
 pnpm workspaces (`pnpm-workspace.yaml`). Ejecuta `pnpm install` siempre desde la raíz (hay un único `pnpm-lock.yaml`). Explicación y comandos en `README.md`.
 
 - `apps/mobile` — app Expo (ver `apps/mobile/AGENTS.md`). Los comandos `expo` y `eas` se ejecutan desde esa carpeta, con `pnpm exec expo ...` o `pnpm dlx eas-cli@latest ...`.
-- `packages/shared` — tipos y constantes compartidos (`@caza-precios/shared`). Exporta TypeScript sin compilar; Metro y `tsc` lo consumen directamente.
+- `apps/api` — backend Hono + Drizzle + Supabase (ver `apps/api/README.md`). Los cambios de esquema van en `src/db/schema.ts` + `pnpm api:db:generate`; nunca edites a mano una migración ya aplicada.
+- `packages/shared` — tipos y constantes (`@caza-precios/shared`) y esquemas Zod (`@caza-precios/shared/schemas`). Exporta TypeScript sin compilar; Metro, `tsx` y `tsc` lo consumen directamente. Imports internos sin extensión (Metro no resuelve `.js` → `.ts`).
 
 Antes de dar una tarea por terminada: `pnpm check` desde la raíz.
 

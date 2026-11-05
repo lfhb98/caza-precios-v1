@@ -9,15 +9,16 @@ Este repositorio es un **monorepo**: varios proyectos relacionados viven juntos 
 ```
 caza-precios/
 ├─ apps/
+│  ├─ api/           Backend: Hono + Drizzle + Supabase         @caza-precios/api
 │  └─ mobile/        App Expo / React Native (iOS y Android)    @caza-precios/mobile
 ├─ packages/
-│  └─ shared/        Tipos y constantes compartidos             @caza-precios/shared
+│  └─ shared/        Tipos, constantes y esquemas Zod           @caza-precios/shared
 ├─ package.json      Scripts para todo el monorepo
 ├─ pnpm-workspace.yaml
 └─ pnpm-lock.yaml    Único lockfile para todos los proyectos
 ```
 
-Previstos: `apps/api` (backend) y `apps/web` (frontend web).
+Previsto: `apps/web` (frontend web). Cómo configurar y arrancar la API: [`apps/api/README.md`](apps/api/README.md).
 
 ## ¿Por qué un monorepo?
 
@@ -66,14 +67,19 @@ Si pnpm avisa de scripts de compilación ignorados, revisa la lista y apruébalo
 
 | Comando | Qué hace |
 |---|---|
+| `pnpm api` | Arranca la API en modo desarrollo (necesita `apps/api/.env`) |
+| `pnpm api:test` | Tests de la API (Postgres en memoria, no necesita Supabase) |
+| `pnpm api:db:generate` | Genera una migración a partir de `apps/api/src/db/schema.ts` |
+| `pnpm api:db:migrate` | Aplica las migraciones pendientes a la base de datos de `DATABASE_URL` |
 | `pnpm mobile` | Arranca el servidor de desarrollo de Expo |
 | `pnpm mobile:android` | Igual, abriendo directamente el emulador Android |
 | `pnpm mobile:ios` | Igual, abriendo el simulador iOS (solo macOS) |
 | `pnpm mobile:web` | Igual, en el navegador |
 | `pnpm mobile:doctor` | Diagnóstico de Expo (versiones y configuración) |
 | `pnpm typecheck` | TypeScript en todos los proyectos |
+| `pnpm test` | Tests de todos los proyectos que los tengan |
 | `pnpm lint` | Lint en todos los proyectos (ESLint aún no está configurado en `mobile`: la primera vez ofrecerá instalarlo) |
-| `pnpm check` | `typecheck` + `mobile:doctor`; pásalo antes de abrir un Pull Request |
+| `pnpm check` | `typecheck` + `test` + `mobile:doctor`; pásalo antes de abrir un Pull Request |
 
 Cómo funcionan por dentro:
 
@@ -103,9 +109,16 @@ En el `package.json` del proyecto que lo necesite:
 "@caza-precios/shared": "workspace:*"
 ```
 
-Y en el código: `import { AVAILABLE_STORES, type PriceEntry } from '@caza-precios/shared';`
+Y en el código:
 
-`packages/shared` exporta TypeScript sin compilar; Metro y `tsc` lo leen directamente.
+```ts
+import { AVAILABLE_STORES, type PriceEntry } from '@caza-precios/shared';   // tipos y constantes
+import { createPriceSchema } from '@caza-precios/shared/schemas';           // validación con Zod
+```
+
+Los esquemas van en una entrada aparte para que la app móvil no cargue Zod (unos 0,7 MB en el bundle) hasta que los use.
+
+`packages/shared` exporta TypeScript sin compilar; Metro, `tsx` y `tsc` lo leen directamente. Sus imports internos van **sin extensión** (`./stores`, no `./stores.js`): Metro no resuelve `.js` a `.ts`.
 
 ### Herramientas sueltas
 
