@@ -52,6 +52,8 @@ export const products = pgTable(
   (t) => [
     check('products_name_not_empty', sql`length(trim(${t.name})) > 0`),
     uniqueIndex('products_name_unique').using('btree', sql`lower(trim(${t.name}))`),
+    // Toda clave foránea con índice: ON DELETE SET NULL no recorre la tabla entera.
+    index('products_created_by_idx').on(t.createdBy),
     pgPolicy('products_select', { for: 'select', to: everyone, using: sql`true` }),
     pgPolicy('products_insert', {
       for: 'insert',
@@ -73,6 +75,7 @@ export const stores = pgTable(
   (t) => [
     check('stores_name_not_empty', sql`length(trim(${t.name})) > 0`),
     uniqueIndex('stores_name_unique').using('btree', sql`lower(trim(${t.name}))`),
+    index('stores_created_by_idx').on(t.createdBy),
     pgPolicy('stores_select', { for: 'select', to: everyone, using: sql`true` }),
     pgPolicy('stores_insert', {
       for: 'insert',

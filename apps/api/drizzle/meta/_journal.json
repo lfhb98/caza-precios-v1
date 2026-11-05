@@ -15,6 +15,20 @@
       "when": 1793878509800,
       "tag": "0001_profiles_trigger_and_default_stores",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793883745166,
+      "tag": "0002_index_created_by",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793883745826,
+      "tag": "0003_revoke_rls_auto_enable",
+      "breakpoints": true
     }
   ]
 }
