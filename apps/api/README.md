@@ -51,7 +51,7 @@ pnpm api                # desarrollo, se reinicia al guardar
 | `GET` | `/health` | Comprueba que la API está viva |
 | `GET` | `/stores` | Tiendas; las precargadas primero |
 | `POST` 🔒 | `/stores` | Crea una tienda (`{ name }`). Si ya existe → 409 con la existente en `store` |
-| `GET` | `/products?search=&limit=&offset=` | Productos con su precio más barato actual (`cheapest`, o `null`) |
+| `GET` | `/products?search=&ids=&limit=&offset=` | Productos con su precio más barato actual (`cheapest`, o `null`). `ids` (separados por comas) pide productos concretos |
 | `POST` 🔒 | `/products` | Crea un producto (`{ name }`). Si ya existe → 409 con el existente en `product` |
 | `GET` | `/products/:id` | Producto con el precio actual en cada tienda, de más barato a más caro |
 | `GET` | `/products/:id/history?storeId=&limit=` | Historial de precios, del más reciente al más antiguo |
@@ -119,4 +119,4 @@ Para SQL que Drizzle no sabe generar (triggers, datos iniciales): `pnpm --filter
 
 - **Fotos:** subida a Supabase Storage (bucket `price-images` del diseño). La API ya guarda `imagePath`, pero aún no gestiona la subida.
 - **Despliegue:** elegir dónde (Railway, Fly.io, Render...) y un paso de build.
-- **Clientes:** conectar el móvil con el cliente tipado de Hono (`hc<AppType>`, exportado en `src/app.ts`).
+- **Web:** el frontend web puede reutilizar el cliente tipado (`hc<AppType>`), como hace `apps/mobile/src/lib/api.ts`.

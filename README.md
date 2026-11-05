@@ -12,7 +12,7 @@ caza-precios/
 │  ├─ api/           Backend: Hono + Drizzle + Supabase         @caza-precios/api
 │  └─ mobile/        App Expo / React Native (iOS y Android)    @caza-precios/mobile
 ├─ packages/
-│  └─ shared/        Tipos, constantes y esquemas Zod           @caza-precios/shared
+│  └─ shared/        Constantes y esquemas Zod compartidos      @caza-precios/shared
 ├─ package.json      Scripts para todo el monorepo
 ├─ pnpm-workspace.yaml
 └─ pnpm-lock.yaml    Único lockfile para todos los proyectos
@@ -24,7 +24,7 @@ Previsto: `apps/web` (frontend web). Cómo configurar y arrancar la API: [`apps/
 
 Hasta ahora CazaPrecios era solo una app móvil que guardaba todo en el teléfono. Los siguientes pasos son un **backend** (sincronizar datos, cuentas de usuario, fotos en la nube) y una **versión web**. Son tres proyectos que hablan el mismo idioma: productos, precios y supermercados.
 
-- **Una sola definición de los datos.** `PriceEntry`, la lista de supermercados, etc. viven en `packages/shared` y los importan todas las apps. Antes estaban copiados en tres pantallas distintas. Si cambia un campo, TypeScript marca el error en el móvil, la web y la API a la vez, antes de ejecutar nada.
+- **Una sola definición de los datos.** Los esquemas de validación y la lista de supermercados viven en `packages/shared`, y la app móvil usa los tipos de la API directamente (cliente tipado de Hono). Si cambia un campo, TypeScript marca el error en el móvil, la web y la API a la vez, antes de ejecutar nada.
 - **Cambios atómicos.** Añadir un campo nuevo (por ejemplo, la fecha del precio) toca API, móvil y web. En un monorepo es un solo commit y un solo Pull Request, sin coordinar versiones entre repositorios.
 - **Una instalación, un lockfile, unos comandos.** `pnpm install` en la raíz prepara todo; `pnpm typecheck` revisa todos los proyectos.
 - **Sin publicar paquetes.** `@caza-precios/shared` no se sube a npm: pnpm lo enlaza localmente (`workspace:*`).
@@ -58,10 +58,32 @@ Costes, para ser honestos:
 git clone <url-del-repo>
 cd caza-precios-v1
 pnpm install        # siempre desde la raíz
-pnpm mobile         # arranca Expo; escanea el QR con el móvil
 ```
 
 Si pnpm avisa de scripts de compilación ignorados, revisa la lista y apruébalos con `pnpm approve-builds` solo si reconoces los paquetes.
+
+La app móvil necesita la API, y las dos necesitan el proyecto de Supabase:
+
+1. **Supabase** (una vez): en Authentication → Sign In / Providers, activa **Allow anonymous sign-ins**. La app crea un usuario anónimo al abrirse, sin pantalla de login.
+2. **API:** configura `apps/api/.env` (ver [`apps/api/README.md`](apps/api/README.md)) y arráncala:
+
+   ```bash
+   pnpm api
+   ```
+
+3. **App:** copia `apps/mobile/.env.example` como `apps/mobile/.env`, rellena la URL y la *publishable key* de Supabase, y arranca Expo en otra terminal:
+
+   ```bash
+   pnpm mobile         # escanea el QR con el móvil (misma red Wi-Fi que el ordenador)
+   ```
+
+   En desarrollo la app busca la API en el mismo ordenador que ejecuta Expo, en el puerto 3000. Si tu firewall bloquea ese puerto, el móvil no podrá conectar: permite Node.js en redes privadas.
+
+### Cómo usa la app la API
+
+- **Mi lista** se guarda en el móvil: son los productos del catálogo compartido que te interesan. Al añadir uno que ya existe, se reutiliza; la papelera solo lo quita de tu lista.
+- Los **precios son de la comunidad**: cada local muestra su precio más reciente. Solo puedes editar o borrar los que registraste tú.
+- Las **fotos** de las etiquetas están desactivadas hasta que la subida a Supabase Storage esté lista.
 
 ## Scripts (desde la raíz)
 
@@ -112,8 +134,8 @@ En el `package.json` del proyecto que lo necesite:
 Y en el código:
 
 ```ts
-import { AVAILABLE_STORES, type PriceEntry } from '@caza-precios/shared';   // tipos y constantes
-import { createPriceSchema } from '@caza-precios/shared/schemas';           // validación con Zod
+import { DEFAULT_STORES } from '@caza-precios/shared';            // constantes
+import { createPriceSchema } from '@caza-precios/shared/schemas';  // validación con Zod
 ```
 
 Los esquemas van en una entrada aparte para que la app móvil no cargue Zod (unos 0,7 MB en el bundle) hasta que los use.
