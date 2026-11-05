@@ -16,8 +16,8 @@
     "zod": "^4.6.7"
   },
   "scripts": {
-    "dev": "tsx watch src/serve.ts",
-    "start": "tsx src/serve.ts",
+    "dev": "tsx watch --conditions=source src/serve.ts",
+    "start": "tsx --conditions=source src/serve.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

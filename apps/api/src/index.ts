@@ -1,4 +1,6 @@
 import { existsSync } from 'node:fs';
+// Vercel solo acepta como entrada un archivo que importe `hono` directamente.
+import { Hono } from 'hono';
 import { createSupabaseVerifier } from './auth.js';
 import { createApp } from './create-app.js';
 import { createDatabase } from './db/client.js';
@@ -19,4 +21,4 @@ const app = createApp({
   log: true,
 });
 
-export default app;
+export default app satisfies Hono<any, any, any>;

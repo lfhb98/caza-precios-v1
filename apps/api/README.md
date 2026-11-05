@@ -85,8 +85,9 @@ Siempre JSON con un campo `error`:
 
 ```
 src/
-├─ index.ts        Arranque: lee .env, conecta la base de datos, levanta el servidor
-├─ app.ts          Construye la app Hono a partir de sus dependencias (BD, verificador de tokens)
+├─ index.ts        Entrada (la que usa Vercel): lee el entorno, conecta la BD y exporta la app
+├─ serve.ts        Servidor Node para desarrollo local (`pnpm api`)
+├─ create-app.ts   Construye la app Hono a partir de sus dependencias (BD, verificador de tokens)
 ├─ env.ts          Validación de variables de entorno
 ├─ auth.ts         Verificación de JWT de Supabase y middleware requireAuth
 ├─ errors.ts       Errores → respuestas HTTP (incluidos los de Postgres)
@@ -115,8 +116,26 @@ No necesitan Supabase ni Docker: cada archivo de test arranca un Postgres en mem
 
 Para SQL que Drizzle no sabe generar (triggers, datos iniciales): `pnpm --filter @caza-precios/api exec drizzle-kit generate --custom --name <nombre>`.
 
+## Despliegue (Vercel)
+
+Producción: **https://caza-precios-api.vercel.app** (proyecto `caza-precios-api`, región `dub1`, junto a la base de datos en eu-west-1).
+
+Configuración del proyecto en Vercel: *Root Directory* `apps/api`, preset **Hono**, Fluid compute y Node 24. `vercel.json` instala solo la API y sus dependencias del workspace, compila `packages/shared` y fija la región.
+
+Variables de entorno (Production): `DATABASE_URL` con el **pooler en modo transacción** (`aws-0-eu-west-1.pooler.supabase.com:6543`, usuario `postgres.<ref>`; las funciones no llegan a la conexión directa, que es solo IPv6) y `SUPABASE_URL`. Añade `CORS_ORIGINS` cuando exista el frontend web.
+
+Desplegar, desde la **raíz** del monorepo (no desde `apps/api`):
+
+```bash
+pnpm dlx vercel deploy --prod
+```
+
+`.vercelignore` evita subir los `.env` y `node_modules`. `vercel build` en local no funciona en Windows sin el modo desarrollador (el builder crea enlaces simbólicos); los logs del despliegue están en `pnpm dlx vercel logs`.
+
+**Por qué `packages/shared` tiene `dist/`:** Vercel no incluye el TypeScript de los paquetes del workspace en la función. Sus `exports` usan condiciones: Node en producción carga `dist/` (compilado con esbuild en el build de Vercel); Metro, `tsc`, `pnpm api` y los tests cargan `src/` (condición `source`), así que en local no hace falta compilar nada.
+
 ## Pendiente
 
 - **Fotos:** subida a Supabase Storage (bucket `price-images` del diseño). La API ya guarda `imagePath`, pero aún no gestiona la subida.
-- **Despliegue:** elegir dónde (Railway, Fly.io, Render...) y un paso de build.
+- **Despliegue automático:** ahora se despliega con la CLI. Para desplegar en cada push hay que conectar el repositorio en Vercel (requiere instalar la app de Vercel en el repositorio de lfhb98), o mover el proyecto a su cuenta.
 - **Web:** el frontend web puede reutilizar el cliente tipado (`hc<AppType>`), como hace `apps/mobile/src/lib/api.ts`.

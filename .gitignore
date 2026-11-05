@@ -45,3 +45,7 @@ apps/*/android
 # Claude Code: configuración personal y enlaces locales a .agents/skills
 .claude/settings.local.json
 .claude/skills/
+
+.vercel
+.env*
+!.env.example
