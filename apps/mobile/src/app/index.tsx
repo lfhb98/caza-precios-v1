@@ -335,6 +335,13 @@ export default function HomeScreen() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => closeMenu(() => router.push('/account'))}
+                  >
+                    <Text style={styles.menuItemText}>👤 Mi cuenta</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
                     style={styles.menuItemHeader}
                     onPress={() => setIsStoresExpanded(!isStoresExpanded)}
                   >

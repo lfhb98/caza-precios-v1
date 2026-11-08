@@ -1,3 +1,4 @@
+import { createAccountService } from '@caza-precios/ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type Session } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
@@ -27,6 +28,9 @@ if (Platform.OS !== 'web') {
     else supabase.auth.stopAutoRefresh();
   });
 }
+
+// Login con email y código (pantalla "Mi cuenta"), el mismo que la web (ver packages/ui).
+export const accountService = createAccountService(() => supabase);
 
 let signingIn: Promise<Session> | null = null;
 

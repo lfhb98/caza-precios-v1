@@ -11,9 +11,10 @@ caza-precios/
 ├─ apps/
 │  ├─ api/           Backend: Hono + Drizzle + Supabase         @caza-precios/api
 │  ├─ mobile/        App Expo / React Native (iOS y Android)    @caza-precios/mobile
-│  └─ web/           Web Next.js (SPA, sin login)               @caza-precios/web
+│  └─ web/           Web Next.js (SPA)                          @caza-precios/web
 ├─ packages/
-│  └─ shared/        Constantes, formato, colores y esquemas Zod  @caza-precios/shared
+│  ├─ shared/        Constantes, formato, colores y esquemas Zod  @caza-precios/shared
+│  └─ ui/            Componentes React Native compartidos (login) @caza-precios/ui
 ├─ package.json      Scripts para todo el monorepo
 ├─ pnpm-workspace.yaml
 └─ pnpm-lock.yaml    Único lockfile para todos los proyectos
@@ -65,7 +66,7 @@ Si pnpm avisa de scripts de compilación ignorados, revisa la lista y apruébalo
 
 La app móvil necesita la API, y las dos necesitan el proyecto de Supabase:
 
-1. **Supabase** (una vez): en Authentication → Sign In / Providers, activa **Allow anonymous sign-ins**. La app crea un usuario anónimo al abrirse, sin pantalla de login.
+1. **Supabase** (una vez): en Authentication → Sign In / Providers, activa **Allow anonymous sign-ins**: sin entrar, la app crea un usuario anónimo al registrar algo. Para el login con email y código ("Mi cuenta"), ver la configuración en [`packages/ui/README.md`](packages/ui/README.md).
 2. **API:** configura `apps/api/.env` (ver [`apps/api/README.md`](apps/api/README.md)) y arráncala:
 
    ```bash
@@ -185,6 +186,6 @@ El repositorio incluye configuración para trabajar con agentes:
 
 - `pnpm install` solo desde la raíz. No crees `package-lock.json` ni lockfiles dentro de `apps/*`.
 - Las dependencias de cada app van en su `package.json`, no en la raíz.
-- `packages/shared` no depende de `react` ni `react-native`: debe haber una sola versión de cada una en todo el monorepo (compruébalo con `pnpm why react-native`).
+- `packages/shared` no depende de `react` ni `react-native`: debe haber una sola versión de cada una en todo el monorepo (compruébalo con `pnpm why react-native`). `packages/ui` las declara como `peerDependencies` (y en `devDependencies` la misma versión exacta que el móvil, para sus tests).
 - Entre proyectos del monorepo, siempre `"workspace:*"`.
 - `ios/` y `android/` se generan (Continuous Native Generation) y están ignorados por git: la configuración nativa va en `app.json`.
