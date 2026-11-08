@@ -13,11 +13,13 @@
   },
   "dependencies": {
     "@caza-precios/shared": "workspace:*",
+    "@caza-precios/ui": "workspace:*",
     "@supabase/supabase-js": "^2.119.0",
     "hono": "^4.13.16",
     "next": "16.4.5",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-native-web": "~0.21.0"
   },
   "devDependencies": {
     "@caza-precios/api": "workspace:*",

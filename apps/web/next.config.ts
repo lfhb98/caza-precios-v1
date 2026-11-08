@@ -14,6 +14,9 @@ const nextConfig: NextConfig = {
     resolveAlias: {
       '@caza-precios/shared': '../../packages/shared/src/index.ts',
       '@caza-precios/shared/schemas': '../../packages/shared/src/schemas.ts',
+      // Los componentes compartidos con el móvil (@caza-precios/ui) están hechos
+      // con React Native; en la web se pintan con react-native-web.
+      'react-native': 'react-native-web',
     },
   },
   // El navegador llama a /api/* en el mismo dominio y Next lo reenvía a la API:

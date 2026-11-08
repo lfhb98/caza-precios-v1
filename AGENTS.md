@@ -4,7 +4,8 @@ pnpm workspaces (`pnpm-workspace.yaml`). Ejecuta `pnpm install` siempre desde la
 
 - `apps/mobile` — app Expo (ver `apps/mobile/AGENTS.md`). Los comandos `expo` y `eas` se ejecutan desde esa carpeta, con `pnpm exec expo ...` o `pnpm dlx eas-cli@latest ...`.
 - `apps/api` — backend Hono + Drizzle + Supabase (ver `apps/api/README.md`). Los cambios de esquema van en `src/db/schema.ts` + `pnpm api:db:generate`; nunca edites a mano una migración ya aplicada.
-- `apps/web` — Next.js (App Router) como SPA, sin login (ver `apps/web/README.md`). Llama a la API por `/api/*` (rewrite de Next) con el cliente tipado de Hono.
+- `apps/web` — Next.js (App Router) como SPA (ver `apps/web/README.md`). Llama a la API por `/api/*` (rewrite de Next) con el cliente tipado de Hono.
+- `packages/ui` — componentes React Native compartidos por el móvil y la web (login con email, por enlace o código; ver `packages/ui/README.md`). En la web se pintan con react-native-web (`resolveAlias` de `react-native` en `apps/web/next.config.ts` y en los `vitest.config.ts`). `react`, `react-native` y `@supabase/supabase-js` van en `peerDependencies`; si se cambia su versión en el móvil, cámbiala también en las `devDependencies` de `packages/ui`.
 - `packages/shared` — constantes (`@caza-precios/shared`) y esquemas Zod (`@caza-precios/shared/schemas`). Metro, Next (alias en `apps/web/next.config.ts`), `tsc`, `pnpm api` (tsx con `--conditions=source`) y Vitest consumen el TypeScript de `src/`; solo Node en producción (Vercel) usa `dist/`, que compila `pnpm --filter @caza-precios/shared build`. Si añades una entrada nueva a sus `exports`, añádela también al script `build`. Imports internos sin extensión (Metro no resuelve `.js` → `.ts`).
 - Despliegue de la API: Vercel (ver `apps/api/README.md`), siempre desde la raíz del monorepo.
 
@@ -13,7 +14,7 @@ Antes de dar una tarea por terminada: `pnpm check` desde la raíz.
 Reglas:
 
 - Las dependencias de una app se declaran en el `package.json` de esa app, no en la raíz.
-- `packages/shared` no debe depender de `react` ni `react-native`: una sola versión de cada una en todo el monorepo.
+- `packages/shared` no debe depender de `react` ni `react-native`: una sola versión de cada una en todo el monorepo. Lo que necesite React o React Native va en `packages/ui`.
 - Para dependencias entre workspaces usa `"@caza-precios/<paquete>": "workspace:*"`.
 
 Supabase:

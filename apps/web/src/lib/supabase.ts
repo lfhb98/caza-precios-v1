@@ -1,8 +1,10 @@
+import { createAccountService } from '@caza-precios/ui';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 
-// Sin pantalla de login: igual que la app móvil, cada navegador obtiene un
-// usuario anónimo de Supabase (se guarda en localStorage) y con su token la
-// API sabe quién registra cada precio.
+// Sesión de Supabase (se guarda en localStorage). Sin entrar, el navegador
+// obtiene un usuario anónimo al registrar algo; con "Entrar" (email + código)
+// ese usuario pasa a ser una cuenta. Con su token la API sabe quién registra
+// cada precio.
 
 let client: SupabaseClient | null = null;
 
@@ -20,10 +22,23 @@ function getClient() {
   }
 
   client = createClient(url, key, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      // El enlace del email vuelve con la sesión en la URL (#access_token=...).
+      // La recoge accountService.completeSignInFromUrl, igual que en el móvil.
+      flowType: 'implicit',
+      detectSessionInUrl: false,
+    },
   });
   return client;
 }
+
+// Login con email (enlace o código), el mismo que el móvil (ver packages/ui).
+// El enlace del email vuelve a esta misma web.
+export const accountService = createAccountService(getClient, {
+  redirectTo: () => window.location.origin,
+});
 
 // Id del usuario si ya tiene sesión, sin crear una: solo leer no necesita usuario.
 export async function existingUserId(): Promise<string | null> {

@@ -54,6 +54,20 @@ export const updatePriceSchema = z
   .partial()
   .refine((value) => Object.keys(value).length > 0, 'No hay nada que actualizar');
 
+// Login sin contraseña: solo se pide el email y el código que llega por correo.
+export const emailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1, 'Escribe tu email')
+  .pipe(z.email('Ese email no parece válido'));
+
+// Supabase envía 6 dígitos por defecto; la longitud se puede configurar hasta 10.
+export const otpCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{6,10}$/, 'El código son los números que te hemos enviado por email');
+
 export type CreateStoreInput = z.infer<typeof createStoreSchema>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type CreatePriceInput = z.infer<typeof createPriceSchema>;

@@ -88,6 +88,25 @@ button:focus-visible {
   background: var(--chipBg);
 }
 
+.account-button {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-section {
+  margin-bottom: 16px;
+  max-width: 480px;
+}
+
+.account-section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
 .tab {
   padding: 6px 16px;
   border: 0;

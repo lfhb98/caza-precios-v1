@@ -17,6 +17,11 @@ vi.mock('@/lib/supabase', () => ({
     return { access_token: session.user.token, user: { id: session.user.id } };
   },
   existingUserId: async () => session.user?.id ?? null,
+  // Estos tests no entran con email (eso está en account.test.tsx).
+  accountService: {
+    getAccount: async () => null,
+    onAccountChange: () => () => {},
+  },
 }));
 
 let api: TestApi;

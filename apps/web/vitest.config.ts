@@ -8,7 +8,11 @@ const conditions = ['source', 'module', 'browser', 'development|production'];
 export default defineConfig({
   resolve: {
     conditions,
-    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Como en next.config.ts: @caza-precios/ui usa React Native.
+      'react-native': 'react-native-web',
+    },
   },
   ssr: { resolve: { conditions, externalConditions: ['source', 'node'] } },
   test: {
