@@ -12,6 +12,7 @@ caza-precios/
 │  ├─ api/           Backend: Hono + Drizzle + Supabase         @caza-precios/api
 │  ├─ mobile/        App Expo / React Native (iOS y Android)    @caza-precios/mobile
 │  └─ web/           Web Next.js (SPA)                          @caza-precios/web
+├─ docs/            Planificación y protección de datos
 ├─ packages/
 │  ├─ shared/        Constantes, formato, colores y esquemas Zod  @caza-precios/shared
 │  └─ ui/            Componentes React Native compartidos (login) @caza-precios/ui
@@ -21,6 +22,8 @@ caza-precios/
 ```
 
 Cómo configurar y arrancar la API: [`apps/api/README.md`](apps/api/README.md). La web: [`apps/web/README.md`](apps/web/README.md).
+
+Planificación y documentos del proyecto en [`docs/`](docs): [facturas automáticas y precios de la comunidad](docs/plan-facturas-y-comunidad.md) y [protección de datos](docs/proteccion-de-datos.md).
 
 ## ¿Por qué un monorepo?
 
