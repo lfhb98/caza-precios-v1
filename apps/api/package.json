@@ -1,7 +1,8 @@
 {
   "name": "@caza-precios/api",
   "exports": {
-    ".": "./src/create-app.ts"
+    ".": "./src/create-app.ts",
+    "./testing": "./test/helpers.ts"
   },
   "version": "1.0.0",
   "description": "API for the Caza Precios application",

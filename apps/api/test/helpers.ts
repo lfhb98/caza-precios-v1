@@ -27,11 +27,15 @@ interface RequestOptions {
   body?: unknown;
 }
 
-export async function createTestContext() {
+// `migrationsFolder` permite usarlo desde otros paquetes (apps/web), donde
+// import.meta.url no es una ruta de archivo (entorno jsdom).
+export async function createTestContext({
+  migrationsFolder = fileURLToPath(new URL('../drizzle', import.meta.url)),
+}: { migrationsFolder?: string } = {}) {
   const client = new PGlite();
   await client.exec(SUPABASE_STUB);
   const db = drizzle({ client, schema });
-  await migrate(db, { migrationsFolder: fileURLToPath(new URL('../drizzle', import.meta.url)) });
+  await migrate(db, { migrationsFolder });
   // Supabase da estos permisos por defecto; RLS decide después qué filas.
   await client.exec(`
     grant usage on schema public, auth to anon, authenticated;
@@ -78,7 +82,7 @@ export async function createTestContext() {
     return { status: response.status, body: json };
   }
 
-  return { client, createUser, request, close: () => client.close() };
+  return { app, client, createUser, request, close: () => client.close() };
 }
 
 export type TestContext = Awaited<ReturnType<typeof createTestContext>>;

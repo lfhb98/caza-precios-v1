@@ -45,6 +45,14 @@ src/
 
 `next.config.ts` hace que Next lea `packages/shared/src` directamente (alias de Turbopack), así que no hace falta compilar `packages/shared` para la web.
 
+## Tests
+
+```bash
+pnpm --filter @caza-precios/web test    # o `pnpm test` desde la raíz para todo el monorepo
+```
+
+No necesitan Supabase ni red. `test/crud.test.tsx` pinta la web real (`<CazaPreciosApp />`) en jsdom con Testing Library, y sus llamadas a `/api/*` las responde **la API real** (`createApp`) sobre un Postgres en memoria, el mismo de los tests de la API (`@caza-precios/api/testing`). Solo se simula la sesión de Supabase. Cada test comprueba la pantalla y también lo que queda en la base de datos: leer, buscar, crear productos, tiendas y precios, editar, borrar, los permisos (solo tus precios) y la validación.
+
 ## Lo que la API aún no permite
 
 - Renombrar o borrar productos y tiendas (solo crearlos).
