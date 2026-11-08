@@ -58,6 +58,18 @@ No necesitan Supabase ni red. `test/crud.test.tsx` pinta la web real (`<CazaPrec
 - Renombrar o borrar productos y tiendas (solo crearlos).
 - Subir fotos de las etiquetas.
 
-## Despliegue (pendiente)
+## Despliegue
 
-En Vercel sería un proyecto aparte con *Root Directory* `apps/web` y preset Next.js, con las variables `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y `API_URL`.
+Producción: https://caza-precios-web.vercel.app
+
+Es un proyecto de Vercel aparte del de la API (`caza-precios-web`), con *Root Directory* `apps/web` y preset Next.js. `vercel.json` instala solo la web y sus dependencias del monorepo (`--filter @caza-precios/web...`) y fija la región `dub1`, la misma que la API.
+
+Variables (Production): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y `API_URL=https://caza-precios-api.vercel.app`. Next las fija **al compilar**: si cambias alguna, hay que volver a desplegar.
+
+Se despliega desde la raíz del monorepo. Como `.vercel/project.json` de la raíz está enlazado a la API, se indica el proyecto con variables en vez de hacer `vercel link`:
+
+```bash
+VERCEL_ORG_ID=<id del equipo> VERCEL_PROJECT_ID=<id de caza-precios-web> pnpm dlx vercel deploy --prod
+```
+
+Los dos IDs están en el panel de Vercel (Settings del proyecto) o en `vercel project inspect caza-precios-web`.
