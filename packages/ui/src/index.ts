@@ -3,6 +3,7 @@ export {
   createAccountService,
   type Account,
   type AccountService,
+  type AccountServiceOptions,
   type EmailAuth,
 } from './account';
 export { AccountPanel } from './account-panel';

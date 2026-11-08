@@ -12,6 +12,7 @@ function fakeSupabase(user: FakeUser | null, overrides: Record<string, unknown> 
     signInWithOtp: vi.fn(async () => ({ data: {}, error: null })),
     verifyOtp: vi.fn(async () => ({ data: {}, error: null })),
     signOut: vi.fn(async () => ({ error: null })),
+    setSession: vi.fn(async () => ({ data: {}, error: null })),
     onAuthStateChange: vi.fn(),
     ...overrides,
   };
@@ -21,16 +22,18 @@ function fakeSupabase(user: FakeUser | null, overrides: Record<string, unknown> 
 const authError = (code: string, message = code) => ({ data: {}, error: { code, message } });
 
 describe('createAccountService', () => {
-  it('sin sesión: envía el código para entrar y lo verifica como login', async () => {
+  it('sin sesión: envía el email para entrar y verifica el código como login', async () => {
     const { client, auth } = fakeSupabase(null);
-    const service = createAccountService(() => client);
+    const service = createAccountService(() => client, {
+      redirectTo: () => 'https://web.example/',
+    });
 
     await service.sendCode('ana@example.com');
     await service.verifyCode('ana@example.com', '123456');
 
     expect(auth.signInWithOtp).toHaveBeenCalledWith({
       email: 'ana@example.com',
-      options: { shouldCreateUser: true },
+      options: { shouldCreateUser: true, emailRedirectTo: 'https://web.example/' },
     });
     expect(auth.updateUser).not.toHaveBeenCalled();
     expect(auth.verifyOtp).toHaveBeenCalledWith({
@@ -42,12 +45,17 @@ describe('createAccountService', () => {
 
   it('usuario anónimo: le añade el email (conserva sus precios) y verifica el cambio de email', async () => {
     const { client, auth } = fakeSupabase({ id: 'anon-1', is_anonymous: true });
-    const service = createAccountService(() => client);
+    const service = createAccountService(() => client, {
+      redirectTo: () => 'https://web.example/',
+    });
 
     await service.sendCode('ana@example.com');
     await service.verifyCode('ana@example.com', '123456');
 
-    expect(auth.updateUser).toHaveBeenCalledWith({ email: 'ana@example.com' });
+    expect(auth.updateUser).toHaveBeenCalledWith(
+      { email: 'ana@example.com' },
+      { emailRedirectTo: 'https://web.example/' }
+    );
     expect(auth.signInWithOtp).not.toHaveBeenCalled();
     expect(auth.verifyOtp).toHaveBeenCalledWith(expect.objectContaining({ type: 'email_change' }));
   });
@@ -73,7 +81,7 @@ describe('createAccountService', () => {
     const service = createAccountService(() => client);
 
     await expect(service.verifyCode('ana@example.com', '000000')).rejects.toThrow(
-      new AccountError('El código no es correcto o ha caducado. Pide uno nuevo.')
+      new AccountError('El código o el enlace no es válido o ha caducado. Pide uno nuevo.')
     );
   });
 
@@ -96,6 +104,51 @@ describe('createAccountService', () => {
     expect(await anon.getAccount()).toEqual({ id: 'a', email: null, isAnonymous: true });
     expect(await real.getAccount()).toEqual({ id: 'b', email: 'b@example.com', isAnonymous: false });
     expect(await none.getAccount()).toBeNull();
+  });
+
+  describe('al volver del enlace del email', () => {
+    it('guarda la sesión que trae la URL (#access_token...)', async () => {
+      const { client, auth } = fakeSupabase(null);
+      const service = createAccountService(() => client);
+
+      const handled = await service.completeSignInFromUrl(
+        'https://web.example/#access_token=AT&expires_in=3600&refresh_token=RT&token_type=bearer&type=magiclink'
+      );
+
+      expect(handled).toBe(true);
+      expect(auth.setSession).toHaveBeenCalledWith({ access_token: 'AT', refresh_token: 'RT' });
+    });
+
+    it('también en la app móvil (exp://.../--/account#...)', async () => {
+      const { client, auth } = fakeSupabase(null);
+      const service = createAccountService(() => client);
+
+      await service.completeSignInFromUrl(
+        'exp://192.168.1.20:8081/--/account#access_token=AT&refresh_token=RT&type=email_change'
+      );
+
+      expect(auth.setSession).toHaveBeenCalledWith({ access_token: 'AT', refresh_token: 'RT' });
+    });
+
+    it('explica el error si el enlace ha caducado', async () => {
+      const { client, auth } = fakeSupabase(null);
+      const service = createAccountService(() => client);
+
+      await expect(
+        service.completeSignInFromUrl(
+          'https://web.example/#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired'
+        )
+      ).rejects.toThrow(/no es válido o ha caducado/);
+      expect(auth.setSession).not.toHaveBeenCalled();
+    });
+
+    it('una URL normal no hace nada', async () => {
+      const { client, auth } = fakeSupabase(null);
+      const service = createAccountService(() => client);
+
+      expect(await service.completeSignInFromUrl('https://web.example/?q=leche#top')).toBe(false);
+      expect(auth.setSession).not.toHaveBeenCalled();
+    });
   });
 
   it('cierra la sesión solo en este dispositivo', async () => {

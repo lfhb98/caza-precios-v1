@@ -11,9 +11,11 @@ import { useAccount } from './use-account';
 type Props = {
   service: AccountService;
   onSignedIn?: () => void;
+  // Error que viene de fuera del panel, p. ej. al volver de un enlace caducado.
+  notice?: string | null;
 };
 
-export function AccountPanel({ service, onSignedIn }: Props) {
+export function AccountPanel({ service, onSignedIn, notice }: Props) {
   const { account, ready, isSignedIn } = useAccount(service);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +55,11 @@ export function AccountPanel({ service, onSignedIn }: Props) {
 
   return (
     <View style={styles.panel}>
+      {notice && (
+        <Text style={styles.notice} role="alert">
+          {notice}
+        </Text>
+      )}
       <Text style={styles.text}>Entra para guardar tus precios en tu cuenta y verlos en otros dispositivos.</Text>
       {account?.isAnonymous && (
         <Text style={styles.hint}>
@@ -70,4 +77,11 @@ const styles = StyleSheet.create({
   strong: { fontWeight: '700' },
   hint: { fontSize: 14, color: THEME.subtext, lineHeight: 20 },
   error: { fontSize: 14, color: THEME.danger },
+  notice: {
+    fontSize: 14,
+    color: THEME.danger,
+    backgroundColor: '#fdecec',
+    padding: 10,
+    borderRadius: 8,
+  },
 });

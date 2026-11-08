@@ -1,6 +1,7 @@
 import { createAccountService } from '@caza-precios/ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type Session } from '@supabase/supabase-js';
+import * as Linking from 'expo-linking';
 import { AppState, Platform } from 'react-native';
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './config';
 
@@ -17,6 +18,9 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
+    // El enlace del email abre la app con la sesión en la URL (#access_token=...);
+    // la recoge accountService.completeSignInFromUrl en src/app/_layout.tsx.
+    flowType: 'implicit',
     detectSessionInUrl: false,
   },
 });
@@ -29,8 +33,12 @@ if (Platform.OS !== 'web') {
   });
 }
 
-// Login con email y código (pantalla "Mi cuenta"), el mismo que la web (ver packages/ui).
-export const accountService = createAccountService(() => supabase);
+// Login con email (enlace o código), el mismo que la web (ver packages/ui).
+// El enlace del email abre la pantalla "Mi cuenta": cazaprecios://account en la
+// app instalada, exp://<ip>:8081/--/account en Expo Go.
+export const accountService = createAccountService(() => supabase, {
+  redirectTo: () => Linking.createURL('account'),
+});
 
 let signingIn: Promise<Session> | null = null;
 

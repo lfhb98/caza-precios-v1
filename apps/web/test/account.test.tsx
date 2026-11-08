@@ -34,6 +34,16 @@ vi.mock('@/lib/supabase', () => {
       auth.user = null;
       notify();
     },
+    // Como Supabase: el enlace del email vuelve con la sesión en el fragmento.
+    completeSignInFromUrl: async (url) => {
+      if (url.includes('error_code=otp_expired')) {
+        throw new Error('El código o el enlace no es válido o ha caducado. Pide uno nuevo.');
+      }
+      if (!url.includes('access_token=')) return false;
+      auth.user = auth.nextUser;
+      notify();
+      return true;
+    },
   };
 
   return {
@@ -54,6 +64,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   cleanup();
+  window.history.replaceState(null, '', '/');
   vi.unstubAllGlobals();
   await api.close();
 });
@@ -62,9 +73,9 @@ async function login(user: ReturnType<typeof userEvent.setup>, email: string) {
   await user.click(await screen.findByRole('button', { name: 'Entrar' }));
   const panel = screen.getByRole('region', { name: 'Mi cuenta' });
   await user.type(await within(panel).findByRole('textbox', { name: 'Email' }), email);
-  await user.click(within(panel).getByRole('button', { name: 'Enviarme un código' }));
+  await user.click(within(panel).getByRole('button', { name: 'Enviarme el email' }));
   await user.type(await within(panel).findByRole('textbox', { name: 'Código' }), '123456');
-  await user.click(within(panel).getByRole('button', { name: 'Entrar' }));
+  await user.click(within(panel).getByRole('button', { name: 'Entrar con el código' }));
 }
 
 async function seedPriceFor(owner: TestUser, product: string) {
@@ -91,6 +102,30 @@ describe('login', () => {
     // El panel se cierra y la cabecera muestra la cuenta.
     expect(await screen.findByRole('button', { name: '👤 ana@example.com' })).toBeTruthy();
     expect(screen.queryByRole('region', { name: 'Mi cuenta' })).toBeNull();
+  });
+
+  it('entra al volver del enlace del email y quita el token de la URL', async () => {
+    const ana = await api.createUser();
+    auth.nextUser = { ...ana, email: 'ana@example.com' };
+    window.history.replaceState(null, '', '/#access_token=AT&refresh_token=RT&type=magiclink');
+    render(<CazaPreciosApp />);
+
+    expect(await screen.findByRole('button', { name: '👤 ana@example.com' })).toBeTruthy();
+    expect(window.location.hash).toBe('');
+  });
+
+  it('si el enlace ha caducado, abre "Mi cuenta" con el aviso', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid'
+    );
+    render(<CazaPreciosApp />);
+
+    const panel = await screen.findByRole('region', { name: 'Mi cuenta' });
+    expect((await within(panel).findByRole('alert')).textContent).toMatch(/ha caducado/);
+    expect(window.location.hash).toBe('');
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeTruthy();
   });
 
   it('cierra la sesión', async () => {

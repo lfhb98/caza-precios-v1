@@ -5,7 +5,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import type { EmailAuth } from './account';
 
 // Formulario de login sin contraseña, el mismo en el móvil (React Native) y en
-// la web (react-native-web). Solo pide el email y el código que llega por correo.
+// la web (react-native-web). Solo pide el email: se entra con el enlace que
+// llega por correo o, si la plantilla del email lo incluye, con el código.
 
 type Props = {
   auth: EmailAuth;
@@ -45,7 +46,7 @@ export function EmailLoginForm({ auth, onSignedIn }: Props) {
       setEmail(parsed.data);
       setCode('');
       setStep('code');
-      setInfo(isResend ? 'Te hemos enviado un código nuevo.' : null);
+      setInfo(isResend ? 'Te hemos enviado otro email.' : null);
     });
   };
 
@@ -94,15 +95,17 @@ export function EmailLoginForm({ auth, onSignedIn }: Props) {
             autoFocus
           />
           <Text style={styles.hint}>
-            Te enviaremos un código para entrar. No necesitas contraseña.
+            Te enviaremos un email para entrar. No necesitas contraseña.
           </Text>
-          <Button label="Enviarme un código" busy={isBusy} onPress={() => sendCode()} />
+          <Button label="Enviarme el email" busy={isBusy} onPress={() => sendCode()} />
         </>
       ) : (
         <>
-          <Text style={styles.hint}>
-            Hemos enviado un código a <Text style={styles.strong}>{email}</Text>. Escríbelo aquí.
+          <Text style={styles.text}>
+            Te hemos enviado un email a <Text style={styles.strong}>{email}</Text>. Ábrelo en
+            este dispositivo y pulsa el enlace para entrar.
           </Text>
+          <Text style={styles.hint}>Si el email trae un código, también puedes escribirlo aquí:</Text>
           <Text style={styles.label}>
             Código
           </Text>
@@ -122,10 +125,10 @@ export function EmailLoginForm({ auth, onSignedIn }: Props) {
             editable={!isBusy}
             autoFocus
           />
-          <Button label="Entrar" busy={isBusy} onPress={verify} />
+          <Button label="Entrar con el código" busy={isBusy} onPress={verify} />
           <View style={styles.links}>
             <LinkButton label="Usar otro email" onPress={changeEmail} disabled={isBusy} />
-            <LinkButton label="Reenviar código" onPress={() => sendCode(true)} disabled={isBusy} />
+            <LinkButton label="Reenviar email" onPress={() => sendCode(true)} disabled={isBusy} />
           </View>
         </>
       )}
@@ -210,6 +213,7 @@ export const styles = StyleSheet.create({
     backgroundColor: THEME.card,
   },
   codeInput: { fontSize: 22, letterSpacing: 6, textAlign: 'center' },
+  text: { fontSize: 15, color: THEME.text, lineHeight: 22 },
   hint: { fontSize: 14, color: THEME.subtext, lineHeight: 20 },
   strong: { fontWeight: '700', color: THEME.text },
   button: {

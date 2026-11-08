@@ -22,13 +22,23 @@ function getClient() {
   }
 
   client = createClient(url, key, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      // El enlace del email vuelve con la sesión en la URL (#access_token=...).
+      // La recoge accountService.completeSignInFromUrl, igual que en el móvil.
+      flowType: 'implicit',
+      detectSessionInUrl: false,
+    },
   });
   return client;
 }
 
-// Login con email y código, el mismo que el móvil (ver packages/ui).
-export const accountService = createAccountService(getClient);
+// Login con email (enlace o código), el mismo que el móvil (ver packages/ui).
+// El enlace del email vuelve a esta misma web.
+export const accountService = createAccountService(getClient, {
+  redirectTo: () => window.location.origin,
+});
 
 // Id del usuario si ya tiene sesión, sin crear una: solo leer no necesita usuario.
 export async function existingUserId(): Promise<string | null> {

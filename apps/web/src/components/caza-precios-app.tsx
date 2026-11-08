@@ -20,6 +20,7 @@ export function CazaPreciosApp() {
   // recalcule el precio más barato de cada producto.
   const [pricesVersion, setPricesVersion] = useState(0);
   const [showAccount, setShowAccount] = useState(false);
+  const [accountNotice, setAccountNotice] = useState<string | null>(null);
   const { account, ready, isSignedIn } = useAccount(accountService);
   // Al entrar en otra cuenta o salir cambian los precios "tuyos": se recarga el detalle.
   // (Crear el usuario anónimo al registrar el primer precio no cuenta como cambio.)
@@ -37,6 +38,23 @@ export function CazaPreciosApp() {
   useEffect(() => {
     loadStores();
   }, [loadStores]);
+
+  // Al volver del enlace del email, la URL trae la sesión (o un error): se entra
+  // y se limpia la URL para que el token no se quede en el historial.
+  useEffect(() => {
+    const url = window.location.href;
+    if (!url.includes('#') && !url.includes('?')) return;
+    accountService
+      .completeSignInFromUrl(url)
+      .then((handled) => {
+        if (handled) window.history.replaceState(null, '', window.location.pathname);
+      })
+      .catch((error) => {
+        window.history.replaceState(null, '', window.location.pathname);
+        setAccountNotice(error instanceof Error ? error.message : 'No se pudo entrar con el enlace.');
+        setShowAccount(true);
+      });
+  }, []);
 
   return (
     <div className="app">
@@ -78,7 +96,14 @@ export function CazaPreciosApp() {
                 Cerrar
               </button>
             </div>
-            <AccountPanel service={accountService} onSignedIn={() => setShowAccount(false)} />
+            <AccountPanel
+              service={accountService}
+              notice={accountNotice}
+              onSignedIn={() => {
+                setAccountNotice(null);
+                setShowAccount(false);
+              }}
+            />
           </section>
         )}
 

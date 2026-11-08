@@ -21,6 +21,7 @@ function fakeService(initial: Account | null, overrides: Partial<AccountService>
       listener?.({ id: 'u1', email: 'ana@example.com', isAnonymous: false });
     }),
     signOut: vi.fn(async () => listener?.(null)),
+    completeSignInFromUrl: vi.fn(async () => false),
     ...overrides,
   };
   return service;
@@ -39,14 +40,14 @@ describe('AccountPanel (formulario compartido web/móvil)', () => {
     render(<AccountPanel service={service} onSignedIn={onSignedIn} />);
 
     await user.type(await emailInput(), '  Ana@Example.com ');
-    await user.click(button('Enviarme un código'));
+    await user.click(button('Enviarme el email'));
 
     // Se envía el email normalizado y se pasa al paso del código.
     expect(service.sendCode).toHaveBeenCalledWith('ana@example.com');
-    expect(await screen.findByText(/Hemos enviado un código a/)).toBeTruthy();
+    expect(await screen.findByText(/Te hemos enviado un email a/)).toBeTruthy();
 
     await user.type(screen.getByRole('textbox', { name: 'Código' }), '12 34-56');
-    await user.click(button('Entrar'));
+    await user.click(button('Entrar con el código'));
 
     expect(service.verifyCode).toHaveBeenCalledWith('ana@example.com', '123456');
     expect(onSignedIn).toHaveBeenCalled();
@@ -59,11 +60,11 @@ describe('AccountPanel (formulario compartido web/móvil)', () => {
     const service = fakeService(null);
     render(<AccountPanel service={service} />);
 
-    await user.click(await screen.findByRole('button', { name: 'Enviarme un código' }));
+    await user.click(await screen.findByRole('button', { name: 'Enviarme el email' }));
     expect((await screen.findByRole('alert')).textContent).toBe('Escribe tu email');
 
     await user.type(await emailInput(), 'ana@');
-    await user.click(button('Enviarme un código'));
+    await user.click(button('Enviarme el email'));
     expect(screen.getByRole('alert').textContent).toBe('Ese email no parece válido');
     expect(service.sendCode).not.toHaveBeenCalled();
   });
@@ -78,14 +79,14 @@ describe('AccountPanel (formulario compartido web/móvil)', () => {
     render(<AccountPanel service={service} />);
 
     await user.type(await emailInput(), 'ana@example.com');
-    await user.click(button('Enviarme un código'));
+    await user.click(button('Enviarme el email'));
     await user.type(await screen.findByRole('textbox', { name: 'Código' }), '123');
-    await user.click(button('Entrar'));
+    await user.click(button('Entrar con el código'));
     expect(screen.getByRole('alert').textContent).toMatch(/números que te hemos enviado/);
     expect(service.verifyCode).not.toHaveBeenCalled();
 
     await user.type(screen.getByRole('textbox', { name: 'Código' }), '456');
-    await user.click(button('Entrar'));
+    await user.click(button('Entrar con el código'));
     expect((await screen.findByRole('alert')).textContent).toMatch(/ha caducado/);
     expect(screen.queryByText(/Has entrado como/)).toBeNull();
   });
@@ -96,13 +97,18 @@ describe('AccountPanel (formulario compartido web/móvil)', () => {
     render(<AccountPanel service={service} />);
 
     await user.type(await emailInput(), 'ana@example.com');
-    await user.click(button('Enviarme un código'));
-    await user.click(await screen.findByRole('button', { name: 'Reenviar código' }));
+    await user.click(button('Enviarme el email'));
+    await user.click(await screen.findByRole('button', { name: 'Reenviar email' }));
     expect(service.sendCode).toHaveBeenCalledTimes(2);
     expect(await screen.findByRole('status')).toBeTruthy();
 
     await user.click(button('Usar otro email'));
     expect(await emailInput()).toBeTruthy();
+  });
+
+  it('muestra el aviso que le pasa la app (p. ej. un enlace caducado)', async () => {
+    render(<AccountPanel service={fakeService(null)} notice="El enlace ha caducado" />);
+    expect((await screen.findByRole('alert')).textContent).toBe('El enlace ha caducado');
   });
 
   it('a un usuario anónimo le avisa de que conserva sus precios', async () => {

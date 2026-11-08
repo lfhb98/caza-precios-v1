@@ -66,7 +66,7 @@ Si pnpm avisa de scripts de compilación ignorados, revisa la lista y apruébalo
 
 La app móvil necesita la API, y las dos necesitan el proyecto de Supabase:
 
-1. **Supabase** (una vez): en Authentication → Sign In / Providers, activa **Allow anonymous sign-ins**: sin entrar, la app crea un usuario anónimo al registrar algo. Para el login con email y código ("Mi cuenta"), ver la configuración en [`packages/ui/README.md`](packages/ui/README.md).
+1. **Supabase** (una vez): en Authentication → Sign In / Providers, activa **Allow anonymous sign-ins**: sin entrar, la app crea un usuario anónimo al registrar algo. Para el login con email ("Mi cuenta": enlace o código), ver la configuración en [`packages/ui/README.md`](packages/ui/README.md).
 2. **API:** configura `apps/api/.env` (ver [`apps/api/README.md`](apps/api/README.md)) y arráncala:
 
    ```bash
