@@ -10,15 +10,16 @@ Este repositorio es un **monorepo**: varios proyectos relacionados viven juntos 
 caza-precios/
 ├─ apps/
 │  ├─ api/           Backend: Hono + Drizzle + Supabase         @caza-precios/api
-│  └─ mobile/        App Expo / React Native (iOS y Android)    @caza-precios/mobile
+│  ├─ mobile/        App Expo / React Native (iOS y Android)    @caza-precios/mobile
+│  └─ web/           Web Next.js (SPA, sin login)               @caza-precios/web
 ├─ packages/
-│  └─ shared/        Constantes y esquemas Zod compartidos      @caza-precios/shared
+│  └─ shared/        Constantes, formato, colores y esquemas Zod  @caza-precios/shared
 ├─ package.json      Scripts para todo el monorepo
 ├─ pnpm-workspace.yaml
 └─ pnpm-lock.yaml    Único lockfile para todos los proyectos
 ```
 
-Previsto: `apps/web` (frontend web). Cómo configurar y arrancar la API: [`apps/api/README.md`](apps/api/README.md).
+Cómo configurar y arrancar la API: [`apps/api/README.md`](apps/api/README.md). La web: [`apps/web/README.md`](apps/web/README.md).
 
 ## ¿Por qué un monorepo?
 
@@ -98,6 +99,8 @@ La app móvil necesita la API, y las dos necesitan el proyecto de Supabase:
 | `pnpm mobile:ios` | Igual, abriendo el simulador iOS (solo macOS) |
 | `pnpm mobile:web` | Igual, en el navegador |
 | `pnpm mobile:doctor` | Diagnóstico de Expo (versiones y configuración) |
+| `pnpm web` | Arranca la web en http://localhost:3001 (necesita `apps/web/.env.local`) |
+| `pnpm web:build` | Compila la web para producción |
 | `pnpm typecheck` | TypeScript en todos los proyectos |
 | `pnpm test` | Tests de todos los proyectos que los tengan |
 | `pnpm lint` | Lint en todos los proyectos (ESLint aún no está configurado en `mobile`: la primera vez ofrecerá instalarlo) |

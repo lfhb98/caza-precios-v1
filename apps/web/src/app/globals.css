@@ -1,0 +1,416 @@
+/* Los colores (--bg, --primary, --cheapest, ...) los define app/layout.tsx a partir
+   de THEME en @caza-precios/shared, los mismos que usa la app móvil. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: 1.4rem;
+}
+
+h3 {
+  font-size: 1rem;
+  margin-top: 8px;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+input,
+select {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* --- Estructura --- */
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.brand {
+  font-size: 1.6rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--chipBg);
+}
+
+.tab {
+  padding: 6px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tab.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.06);
+}
+
+.products-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.detail-empty {
+  min-height: 200px;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.back-button {
+  display: none;
+  align-self: flex-start;
+}
+
+/* En pantallas estrechas se ve la lista o el detalle, no los dos. */
+@media (max-width: 720px) {
+  .products-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-empty,
+  .has-selection .product-list {
+    display: none;
+  }
+
+  .back-button {
+    display: inline;
+  }
+}
+
+/* --- Controles --- */
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.inline-form input {
+  flex: 1 1 140px;
+}
+
+.button {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--chipBg);
+  cursor: pointer;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.button.primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.button.danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #fff;
+}
+
+.button.danger-outline {
+  border-color: var(--danger);
+  background: transparent;
+  color: var(--danger);
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-weight: 600;
+  text-align: left;
+}
+
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--primaryLight);
+  font-size: 0.9rem;
+}
+
+.notice.error {
+  border-color: var(--danger);
+  background: #fdecea;
+}
+
+.notice.error .link-button {
+  color: var(--danger);
+}
+
+.muted {
+  margin: 0;
+  color: var(--subtext);
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--chipBg);
+  color: var(--subtext);
+  font-size: 0.75rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.cheapest-badge {
+  background: var(--cheapestBg);
+  color: var(--cheapest);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- Lista de productos --- */
+
+.product-items,
+.store-items,
+.history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.product-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.product-item {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--bg);
+  cursor: pointer;
+  text-align: left;
+}
+
+.product-item:hover {
+  border-color: var(--border);
+}
+
+.product-item.selected {
+  border-color: var(--primary);
+  background: var(--primaryLight);
+}
+
+.product-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.cheapest-tag {
+  color: var(--cheapest);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* --- Detalle --- */
+
+.prices-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.prices-table th {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--subtext);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.prices-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--chipBg);
+  vertical-align: middle;
+}
+
+.prices-table tr.cheapest td {
+  background: var(--cheapestBg);
+}
+
+.prices-table .price {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.prices-table tr.cheapest .price {
+  color: var(--cheapest);
+}
+
+.prices-table .actions {
+  text-align: right;
+}
+
+.prices-table .actions > * + * {
+  margin-left: 6px;
+}
+
+.prices-table .actions .notice {
+  margin-top: 6px;
+  text-align: left;
+}
+
+.add-price {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--chipBg);
+}
+
+.history li {
+  display: grid;
+  grid-template-columns: 8rem 1fr auto;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--chipBg);
+  font-size: 0.9rem;
+}
+
+/* En móvil la tabla de precios se apila en tarjetas. */
+@media (max-width: 520px) {
+  .prices-table thead {
+    display: none;
+  }
+
+  .prices-table tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--chipBg);
+  }
+
+  .prices-table td {
+    padding: 2px 8px;
+    border: 0;
+  }
+
+  .prices-table .actions,
+  .prices-table tr.editing td {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  .history li {
+    grid-template-columns: 1fr auto;
+  }
+
+  .history li span:first-child {
+    grid-column: 1 / -1;
+    color: var(--subtext);
+  }
+}
+
+/* --- Tiendas --- */
+
+.store-items li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--chipBg);
+}

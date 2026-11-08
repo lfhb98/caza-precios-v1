@@ -138,4 +138,3 @@ pnpm dlx vercel deploy --prod
 
 - **Fotos:** subida a Supabase Storage (bucket `price-images` del diseño). La API ya guarda `imagePath`, pero aún no gestiona la subida.
 - **Despliegue automático:** ahora se despliega con la CLI. Para desplegar en cada push hay que conectar el repositorio en Vercel (requiere instalar la app de Vercel en el repositorio de lfhb98), o mover el proyecto a su cuenta.
-- **Web:** el frontend web puede reutilizar el cliente tipado (`hc<AppType>`), como hace `apps/mobile/src/lib/api.ts`.

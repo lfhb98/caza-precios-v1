@@ -13,6 +13,8 @@
     "mobile:ios": "pnpm --filter @caza-precios/mobile run ios",
     "mobile:web": "pnpm --filter @caza-precios/mobile run web",
     "mobile:doctor": "pnpm --filter @caza-precios/mobile run doctor",
+    "web": "pnpm --filter @caza-precios/web run dev",
+    "web:build": "pnpm --filter @caza-precios/web run build",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
     "lint": "pnpm -r --if-present run lint",
