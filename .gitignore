@@ -18,6 +18,10 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Next.js
+.next/
+next-env.d.ts
+
 # Metro
 .metro-health-check*
 
