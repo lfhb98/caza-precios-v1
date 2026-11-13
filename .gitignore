@@ -53,3 +53,5 @@ apps/*/android
 .vercel
 .env*
 !.env.example
+
+mockup/*
